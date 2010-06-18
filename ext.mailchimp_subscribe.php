@@ -12,21 +12,6 @@
 
 class Mailchimp_subscribe_ext {
 	
-	/**
-	 * Version.
-	 *
-	 * Don't really want to store this in two separate files, and
-	 * the model class (for example) can't instantiate an instance of
-	 * the extension, because we get into an infinite instantiation
-	 * loop. Nasty.
-	 *
-	 * @static
-	 * @access	public
-	 * @var		string
-	 */
-	public static $extension_version = '2.0.0b1';
-	
-	
 	/* --------------------------------------------------------------
 	 * PUBLIC PROPERTIES
 	 * ------------------------------------------------------------ */
@@ -45,7 +30,7 @@ class Mailchimp_subscribe_ext {
 	 * @access	public
 	 * @var		string
 	 */
-	public $docs_url = 'http://experienceinternet.co.uk/software/mailchimp_subscribe/';
+	public $docs_url = 'http://experienceinternet.co.uk/software/mailchimp-subscribe/';
 	
 	/**
 	 * Extension name.
@@ -108,8 +93,7 @@ class Mailchimp_subscribe_ext {
 	 */
 	public function __construct($settings = array())
 	{
-		$this->_ee 		=& get_instance();
-		$this->version 	= Mailchimp_subscribe_ext::$extension_version;
+		$this->_ee =& get_instance();
 		
 		// Load our glamorous assistants.
 		$this->_ee->load->helper('form');
@@ -118,6 +102,9 @@ class Mailchimp_subscribe_ext {
 		// Need to explicitly set the package path, annoyingly.
 		$this->_ee->load->add_package_path(PATH_THIRD .'mailchimp_subscribe/');
 		$this->_ee->load->model('mailchimp_model');
+		
+		// Retrieve the version.
+		$this->version = $this->_ee->mailchimp_model->get_version();
 		
 		// Define the navigation.
 		$this->_ee->cp->set_right_nav(array(
@@ -162,8 +149,6 @@ class Mailchimp_subscribe_ext {
 		// Need to explicitly load the language file.
 		$this->_ee->lang->loadfile('mailchimp_subscribe');
 		
-		$this->_ee->mailchimp_model->update_settings_from_input();
-		
 		if ($this->_ee->mailchimp_model->save_settings())
 		{
 			$this->_ee->session->set_flashdata('message_success', $this->_ee->lang->line('settings_saved'));
@@ -184,7 +169,7 @@ class Mailchimp_subscribe_ext {
 	public function settings_form()
 	{
 		// Load the member fields.
-		$member_fields = $this->_ee->mailchimp_model->load_member_fields();
+		$member_fields = $this->_ee->mailchimp_model->get_member_fields();
 		$member_field_options = array();
 
 		foreach ($member_fields AS $key => $data)
@@ -196,36 +181,19 @@ class Mailchimp_subscribe_ext {
 		$vars = array(
 			'action_url' 			=> 'C=addons_extensions' .AMP .'M=save_extension_settings',
 			'cp_page_title'			=> $this->_ee->lang->line('extension_name'),
+			'error_log'				=> $this->_ee->mailchimp_model->get_error_log(),
 			'hidden_fields'			=> array('file' => strtolower(substr(get_class($this), 0, -4))),
-			'js_language_strings'	=> array(
-				'missingApiKey'	=> $this->_ee->lang->line('missing_api_key')
-			),
+			'js_language_strings'	=> array('missingApiKey' => $this->_ee->lang->line('missing_api_key')),
+			'mailing_lists'			=> $this->_ee->mailchimp_model->get_mailing_lists(),
 			'member_fields'			=> $member_fields,
 			'member_field_options' 	=> $member_field_options,
-			'settings'				=> $this->_ee->mailchimp_model->load_settings()
+			'settings'				=> $this->_ee->mailchimp_model->get_settings()
 		);
 		
 		// Is this an AJAX request?
-		if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-			&& strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')
+		if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')
 		{
-			$vars['settings'] = $this->_ee->mailchimp_model->update_settings_from_input();
-			
-			try
-			{
-				$vars['mailing_lists'] = $this->_ee->mailchimp_model->load_mailing_lists();
-				$output = $this->_ee->load->view('_mailing_lists', $vars, TRUE);
-			}
-			catch (MCS_Exception $exception)
-			{
-				$vars['error'] = array(
-					'code'		=> $exception->getCode(),
-					'message'	=> $exception->getMessage()
-				);
-				
-				$output = $this->_ee->load->view('_mailing_lists_api_error', $vars, TRUE);
-			}
-			
+			$output = $this->_ee->load->view('_mailing_lists', $vars, TRUE);
 			$this->_ee->output->send_ajax_response($output);
 		}
 		else
@@ -244,7 +212,141 @@ class Mailchimp_subscribe_ext {
 	 */
 	public function update_extension($current_version = '')
 	{
+		return $this->_ee->mailchimp_model->update_extension($current_version);
+	}
+	
+	
+	
+	/* --------------------------------------------------------------
+	 * HOOK HANDLERS
+	 * ------------------------------------------------------------ */
+
+	/**
+	 * Handlers to cp_members_member_create hook.
+	 *
+	 * @see		http://expressionengine.com/developers/extension_hooks/cp_members_member_create/
+	 * @access	public
+	 * @param	string		$member_id		The ID of the newly-created member.
+	 * @param	array 		$member_data	Information about the newly-created member.
+	 * @return	void
+	 */
+	public function cp_members_member_create($member_id = '', $member_data = array())
+	{
+		$this->_ee->mailchimp_model->subscribe_member($member_id);
+	}
+	
+	
+	/**
+	 * Handlers to cp_members_validate_members hook.
+	 *
+	 * @see		http://expressionengine.com/developers/extension_hooks/cp_members_validate_members/
+	 * @access	public
+	 * @return	void
+	 */
+	public function cp_members_validate_members()
+	{
+		if ( ! isset($_POST['action']) OR $_POST['action'] != 'activate')
+		{
+			return;
+		}
+		
+		$member_ids = array();
+		foreach ($_POST AS $key => $val)
+		{
+			if (strpos($key, 'toggle') === 0 && ! is_array($val))
+			{
+				$member_ids[] = $val;
+			}
+		}
+		
+		if ($member_ids)
+		{
+			foreach ($member_ids AS $member_id)
+			{
+				$this->_ee->mailchimp_model->subscribe_member($member_id);
+			}
+		}
+	}
+	
+	
+	/**
+	 * Handles the member_member_register hook.
+	 *
+	 * @access	public
+	 * @param 	array 	$data 	An array of data about the new member.
+	 * @return 	void
+	 */	
+	public function member_member_register($data = array())
+	{
+		if ((strtolower($this->_ee->config->item('req_mbr_activation')) !== 'none')
+			OR ( ! isset($data['username']))
+			OR ( ! isset($data['email']))
+			OR ( ! isset($data['join_date'])))
+		{
+			return FALSE;
+		}
+		
+		$db_member = $this->_ee->db->select('member_id')->get_where('members', array(
+			'username'	=> $data['username'],
+			'email'		=> $data['email'],
+			'join_date'	=> $data['join_date']
+		));
+		
+		if ($db_member->num_rows() === 1)
+		{
+			$this->_ee->mailchimp_model->subscribe_member($db_member->row()->member_id);
+		}
+	}
+	
+	
+	/**
+	 * Handles the member_register_validate_members hook.
+	 *
+	 * @access	public
+	 * @param	string		$member_id		The ID of the member that has just confirmed his registration.
+	 * @return 	void
+	 */
+	public function member_register_validate_members($member_id = '')
+	{
+		if (strtolower($this->_ee->config->item('req_mbr_activation')) === 'email')
+		{
+			$this->_ee->mailchimp_model->subscribe_member($member_id);
+		}
+	}
+	
+	
+	/**
+	 * Handles the User module user_edit_end hook.
+	 *
+	 * @access	public
+	 * @param 	string		$member_id			The member ID.
+	 * @param 	array 		$member_data		Information about the member.
+	 * @param 	array 		$custom_fields		Custom member fields.
+	 * @return 	bool
+	 */
+	public function user_edit_end($member_id = '', $member_data = array(), $custom_fields = array())
+	{
+		$this->_ee->mailchimp_model->update_member_subscriptions($member_id);
 		return TRUE;
+	}
+	
+	
+	/**
+	 * Handles the User module user_register_end hook.
+	 *
+	 * @access  public
+	 * @param   array   $userdata   An array of data about the new member.
+	 * @param   int     $member_id  The ID of the new member.
+	 * @return  array
+	 */
+	public function user_register_end($userdata = array(), $member_id = '')
+	{
+		if (strtolower($this->_ee->config->item('req_mbr_activation')) === 'none')
+		{
+			$this->_ee->mailchimp_model->subscribe_member($member_id);
+		}
+	  
+		return $userdata;
 	}
 	
 }

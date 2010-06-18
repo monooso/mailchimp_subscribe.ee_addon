@@ -10,13 +10,29 @@
  * @version		2.0.0b1
  */
 
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Loader' .EXT;
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Exceptions' .EXT;
 
 class Mailchimp_model extends CI_Model {
 	
 	/* --------------------------------------------------------------
 	 * PRIVATE PROPERTIES
 	 * ------------------------------------------------------------ */
+	
+	/**
+	 * The API user account.
+	 *
+	 * @access	private
+	 * @var		array
+	 */
+	private $_api_account = array();
+	
+	/**
+	 * The API connector.
+	 *
+	 * @access	private
+	 * @var		object
+	 */
+	private $_connector = NULL;
 	
 	/**
 	 * ExpressionEngine object.
@@ -35,12 +51,20 @@ class Mailchimp_model extends CI_Model {
 	private $_extension_class = 'Mailchimp_subscribe_ext';
 	
 	/**
-	 * The extension version. Pulled from the extension static variable.
+	 * The extension version.
 	 *
 	 * @access	private
 	 * @var		string
 	 */
-	private $_extension_version = '';
+	private $_version = '2.0.0b1';
+	
+	/**
+	 * Member fields.
+	 *
+	 * @access	private
+	 * @var		array
+	 */
+	private $_member_fields = array();
 	
 	/**
 	 * The extension settings.
@@ -73,8 +97,35 @@ class Mailchimp_model extends CI_Model {
 	public function __construct()
 	{
 		$this->_ee =& get_instance();
-		$this->_extension_version = Mailchimp_subscribe_ext::$extension_version;
 		$this->_site_id = $this->_ee->config->item('site_id');
+		
+		// Load and update the settings first.
+		$this->_load_settings_from_db();
+		$this->_update_settings_from_input();
+		
+		// Load the member fields from the database.
+		$this->_load_member_fields_from_db();
+		
+		/**
+		 * If the API is set, load the account details and mailing lists from the
+		 * API, in that order. Also create a new API connector.
+		 */
+		
+		if (isset($this->_settings['api_key']))
+		{
+			try
+			{
+				$this->_load_account_from_api();
+				$this->_load_mailing_lists_from_api();
+			}
+			catch (MCS_exception $exception)
+			{
+				$this->log_error($exception->errorMessage, $exception->errorCode);
+			}
+			
+			// Create a new connector object.
+			$this->_connector = new MCAPI($this->_settings['api_key']);
+		}
 	}
 	
 	
@@ -129,7 +180,7 @@ class Mailchimp_model extends CI_Model {
 					'hook'		=> $hook['hook'],
 					'method'	=> $hook['method'],
 					'priority'	=> $hook['priority'],
-					'version'	=> $this->_extension_version
+					'version'	=> $this->_version
 				)
 			);
 		}
@@ -152,6 +203,45 @@ class Mailchimp_model extends CI_Model {
 		$this->dbforge->add_field($fields);
 		$this->dbforge->add_key('site_id', TRUE);
 		$this->dbforge->create_table('mailchimp_subscribe_settings', TRUE);
+		
+		// Create the 'error log' table.
+		$fields = array(
+			'error_log_id' => array(
+				'auto_increment' => TRUE,
+				'constraint'	=> 10,
+				'null'			=> FALSE,
+				'type'			=> 'int',
+				'unsigned'		=> TRUE
+			),
+			'site_id' => array(
+				'constraint'	=> 5,
+				'default'		=> 1,
+				'null'			=> FALSE,
+				'type'			=> 'int',
+				'unsigned'		=> TRUE
+			),
+			'error_date' => array(
+				'constraint'	=> 10,
+				'null'			=> FALSE,
+				'type'			=> 'int',
+				'unsigned'		=> TRUE
+			),
+			'error_code' => array(
+				'constraint'	=> 10,
+				'null'			=> TRUE,
+				'type'			=> 'varchar'
+			),
+			'error_message' => array(
+				'constraint'	=> 255,
+				'null'			=> TRUE,
+				'type'			=> 'varchar'
+			)
+		);
+		
+		$this->dbforge->add_field($fields);
+		$this->dbforge->add_key('error_log_id', TRUE);
+		$this->dbforge->add_key('site_id', FALSE);
+		$this->dbforge->create_table('mailchimp_subscribe_error_log', TRUE);
 	}
 	
 	
@@ -167,6 +257,32 @@ class Mailchimp_model extends CI_Model {
 		
 		$this->load->dbforge();
 		$this->dbforge->drop_table('mailchimp_subscribe_settings');
+		$this->dbforge->drop_table('mailchimp_subscribe_error_log');
+	}
+	
+	
+	/**
+	 * Returns the API account details.
+	 *
+	 * @access	public
+	 * @return	array
+	 */
+	public function get_api_account()
+	{
+		return $this->_api_account;
+	}
+	
+	
+	/**
+	 * Returns the error log.
+	 *
+	 * @access	public
+	 * @return	array
+	 */
+	public function get_error_log()
+	{
+		$db_error_log = $this->db->get_where('mailchimp_subscribe_error_log', array('site_id' => $this->_site_id));
+		return $db_error_log->result_array();
 	}
 	
 	
@@ -176,66 +292,329 @@ class Mailchimp_model extends CI_Model {
 	 * @access	public
 	 * @return	array
 	 */
-	public function load_mailing_lists()
+	public function get_mailing_lists()
 	{
-		// Do we have an API key?
-		if ( ! isset($this->_settings['api_key']))
-		{
-			throw new MCS_Data_exception('Missing API key.');
-		}
-		
-		// Create a new connector object.
-		$connector = new MCAPI($this->_settings['api_key']);
-		
-		// Make the API call.
-		$result = $connector->lists();
-		
-		// Was the call successful?
-		if ($connector->errorCode OR $connector->errorMessage)
-		{
-			throw new MCS_Api_exception($connector->errorMessage, $connector->errorCode);
-		}
-		
-		// Parse the results.
-		$lists = array();
-		
-		foreach ($result AS $r)
-		{
-			if (isset($this->_settings['mailing_lists'][$r['id']]))
-			{
-				$selected		= TRUE;
-				$trigger_field 	= $this->_settings['mailing_lists'][$r['id']]['trigger_field'];
-				$trigger_value 	= $this->_settings['mailing_lists'][$r['id']]['trigger_value'];
-			}
-			else
-			{
-				$selected		= FALSE;
-				$trigger_field 	= '';
-				$trigger_value 	= '';
-			}
-			
-			$list = new MCS_Mailing_list(array(
-				'list_id'		=> $r['id'],
-				'list_name'		=> $r['name'],
-				'selected'		=> $selected,
-				'trigger_field'	=> $trigger_field,
-				'trigger_value'	=> $trigger_value
-			));
-			
-			$lists[] = $list;
-		}
-		
-		return $lists;
+		return $this->_mailing_lists;
 	}
 	
 	
 	/**
-	 * Loads the available member fields.
+	 * Returns the available member fields.
 	 *
 	 * @access	public
 	 * @return	array
 	 */
-	public function load_member_fields()
+	public function get_member_fields()
+	{
+		return $this->_member_fields;
+	}
+	
+	
+	/**
+	 * Returns the site settings.
+	 *
+	 * @access	public
+	 * @return	array
+	 */
+	public function get_settings()
+	{
+		return $this->_settings;
+	}
+	
+	
+	/**
+	 * Returns the extension version.
+	 *
+	 * @access	public
+	 * @return	string
+	 */
+	public function get_version()
+	{
+		return $this->_version;
+	}
+	
+	
+	/**
+	 * Logs an error to the database.
+	 *
+	 * @access	public
+	 * @param	string		$message	The error message.
+	 * @param	string		$code		The error code.
+	 * @return	void
+	 */
+	public function log_error($message = '', $code = '')
+	{
+		$this->db->insert(
+			'mailchimp_subscribe_error_log',
+			array(
+				'site_id'		=> $this->_site_id,
+				'error_date'	=> time(),
+				'error_code'	=> $code,
+				'error_message'	=> $message
+			)
+		);
+	}
+	
+	
+	/**
+	 * Saves the site settings.
+	 *
+	 * @access	public
+	 * @return	bool
+	 */
+	public function save_settings()
+	{
+		$settings = addslashes(serialize($this->_settings));
+		
+		$this->db->delete('mailchimp_subscribe_settings', array('site_id' => $this->_site_id));
+		$this->db->insert('mailchimp_subscribe_settings', array('site_id' => $this->_site_id, 'settings' => $settings));
+		
+		return TRUE;
+	}
+	
+	
+	/**
+	 * Subscribes a member to the active mailing list(s).
+	 *
+	 * @access	public
+	 * @param 	string 		$member_id 		The member ID.
+	 * @return 	void
+	 */	
+	public function subscribe_member($member_id)
+	{
+		try
+		{
+			$this->_update_member_subscriptions($member_id, FALSE);
+		}
+		catch (MCS_Exception $exception)
+		{
+			$this->log_error($exception->errorMessage, $exception->errorCode);
+		}
+	}
+	
+	
+	/**
+	 * Updates a member's mailing list subscriptions.
+	 *
+	 * @access	public
+	 * @param	string		$member_id		The member ID.
+	 * @return	void
+	 */
+	public function update_member_subscriptions($member_id = '')
+	{
+		try
+		{
+			$this->_update_member_subscriptions($member_id, TRUE);
+		}
+		catch (MCS_Exception $exception)
+		{
+			$this->log_error($exception->errorMessage, $exception->errorCode);
+		}
+	}
+	
+	
+	/**
+	 * Updates the extension.
+	 *
+	 * @access	public
+	 * @param 	string		$current_version		The current version.
+	 * @return	bool
+	 */
+	public function update_extension($current_version = '')
+	{
+		if ( ! $current_version OR $current_version == $this->_version)
+		{
+			return FALSE;
+		}
+		
+		// Update the version number.
+		if ($current_version < $this->_version)
+		{
+			$this->db->update(
+				'extensions',
+				array('version' => $this->_version),
+				array('class' => $this->_extension_class)
+			);
+		}
+		
+		return TRUE;
+	}
+	
+	
+	
+	/* --------------------------------------------------------------
+	 * PRIVATE METHODS
+	 * ------------------------------------------------------------ */
+	
+	/**
+	 * Handles all API requests.
+	 *
+	 * @access	private
+	 * @param	string	$method	The API method to call.
+	 * @param	array	$params	An additional parameters to include in the API call.
+	 * @return	void
+	 */
+	private function _call_api($method = '', Array $params = array())
+	{
+		// Do we have an API key?
+		if ( ! isset($this->_settings['api_key']))
+		{
+			throw new MCS_Data_exception('Unable to call API method "' .$method .'" (missing API key).');
+		}
+		
+		if ( ! method_exists($this->_connector, $method))
+		{
+			throw new MCS_Api_exception('Unknown API method "' .$method .'".');
+		}
+		
+		$result = call_user_func_array(array($this->_connector, $method), $params);
+		
+		// Was the connector method called successfully?
+		if ( ! $result)
+		{
+			throw new MCS_Api_exception('Unable to call API method "' .$method .'".');
+		}
+		
+		// Was the API method called successfully.
+		if ($this->_connector->errorCode)
+		{
+			throw new MCS_Api_exception($this->_connector->errorMessage, $this->_connector->errorCode);
+		}
+		
+		return $result;
+	}
+	
+	
+	/**
+	 * Builds the default API account array.
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _get_default_api_account()
+	{
+		return array(
+			'username'			=> '',
+			'user_id'			=> '',
+			'is_trial'			=> FALSE,
+			'timezone'			=> '',
+			'plan_type'			=> '',
+			'plan_low'			=> 0,
+			'plan_high'			=> 0,
+			'plan_start_date'	=> '',
+			'emails_left'		=> 0,
+			'pending_monthly'	=> 0,
+			'first_payment'		=> '',
+			'last_payment'		=> '',
+			'times_logged_in'	=> 0,
+			'last_login'		=> '',
+			'affiliate_link'	=> '',
+			'contact'			=> array(),
+			'modules'			=> array(),
+			'orders'			=> array(),
+			'rewards'			=> array()
+		);
+	}
+	
+	
+	/**
+	 * Builds the default settings array.
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _get_default_settings()
+	{
+		return array(
+			'api_key'		=> '',
+			'mailing_lists'	=> array()
+		);
+	}
+	
+	
+	/**
+	 * Retrieves the user account details from the API.
+	 *
+	 * @access	private
+	 * @return	void
+	 */
+	private function _load_account_from_api()
+	{
+		/**
+		 * Reset the account details. We do this first in case
+		 * the API call throws an exception.
+		 */
+		
+		$this->_api_account = $this->_get_default_api_account();
+		
+		// Make the API call.
+		$this->_api_account = $this->_call_api('getAccountDetails');
+	}
+	
+	
+	/**
+	 * Retrieves the mailing lists from the API.
+	 *
+	 * @access	private
+	 * @return	void
+	 */
+	private function _load_mailing_lists_from_api()
+	{
+		// Reset the mailing lists.
+		$this->_mailing_lists = array();
+		
+		// Make the API call.
+		$result = $this->_call_api('lists');
+		
+		// Parse the results.
+		$lists = array();
+		$unsubscribe_url = 'http://list-manage.com/unsubscribe?u=%uid&amp;id=%lid';
+		
+		foreach ($result AS $r)
+		{
+			/**
+			 * Interest Groups:
+			 * The API returns a 211 error if Interest Groups are not enabled
+			 * for this list. We don't want to fail because of that, so we
+			 * explicitly check for the error code.
+			 */
+			
+			try
+			{
+				$interest_groups = $this->_call_api('listInterestGroups', array($r['id']));
+			}
+			catch (MCS_Exception $exception)
+			{
+				if ($exception->errorCode !== 211)
+				{
+					throw $exception;
+				}
+			}
+			
+			// Merge variables.
+			$merge_vars = $this->_call_api('listMergeVars', array($r['id']));
+			
+			// Add the list.
+			$lists[] = array(
+				'interest_groups'	=> isset($interest_groups['name']) ? $interest_groups['name'] : '',
+				'list_id'			=> $r['id'],
+				'list_name'			=> $r['name'],
+				'merge_vars'		=> $merge_vars,
+				'unsubscribe_url'	=> isset($this->_api_account['user_id']) ? printf($unsubscribe_url, $this->_api_account['user_id'], $r['id']) : ''
+			);
+		}
+		
+		$this->_mailing_lists = $lists;
+	}
+	
+	
+	/**
+	 * Loads the member fields from the database.
+	 *
+	 * @access	private
+	 * @return	array
+	 */
+	private function _load_member_fields_from_db()
 	{
 		/**
 		 * The default ExpressionEngine member fields are
@@ -287,19 +666,19 @@ class Mailchimp_model extends CI_Model {
 			}
 		}
 		
-		return $member_fields;
+		$this->_member_fields = $member_fields;
 	}
 	
 	
 	/**
-	 * Loads the site settings.
+	 * Loads the settings from the database.
 	 *
-	 * @access	public
-	 * @return	array
+	 * @access	private
+	 * @return	void
 	 */
-	public function load_settings()
+	private function _load_settings_from_db()
 	{
-		$this->_settings = $this->_get_default_settings();
+		$settings = $this->_get_default_settings();
 		
 		// Load the settings from the database.
 		$db_settings = $this->db->select('settings')->get_where(
@@ -308,50 +687,146 @@ class Mailchimp_model extends CI_Model {
 			1
 		);
 		
-		if ($db_settings->num_rows() == 0)
+		// If we have saved settings, parse them.
+		if ($db_settings->num_rows() > 0)
 		{
-			return $this->_settings;
+			$this->_ee->load->helper('string');
+
+			$site_settings = unserialize(strip_slashes($db_settings->row()->settings));
+
+			foreach ($settings AS $key => $val)
+			{
+				$settings[$key] = isset($site_settings[$key])
+					? $site_settings[$key]
+					: $val;
+			}
 		}
 		
-		$this->_ee->load->helper('string');
-		
-		$site_settings = unserialize(strip_slashes($db_settings->row()->settings));
-		
-		foreach ($this->_settings AS $key => $val)
-		{
-			$this->_settings[$key] = isset($site_settings[$key])
-				? $site_settings[$key]
-				: $val;
-		}
-		
-		return $this->_settings;
+		$this->_settings = $settings;
 	}
 	
 	
 	/**
-	 * Saves the site settings.
+	 * Subscribes a member to the active mailing lists, or updates
+	 * a member's existing subscriptions.
 	 *
-	 * @access	public
-	 * @return	bool
+	 * @access	private
+	 * @param	string		$member_id		The member ID.
+	 * @param	bool		$update			Are we updating existing subscriptions?
+	 * @return	void
 	 */
-	public function save_settings()
+	private function _update_member_subscriptions($member_id = '', $update = FALSE)
 	{
-		$settings = addslashes(serialize($this->_settings));
+		// Check that we have a member ID.
+		if ( ! $member_id)
+		{
+			throw new MCS_Data_exception('Unable to update member subscriptions (missing member ID).');
+		}
 		
-		$this->db->delete('mailchimp_subscribe_settings', array('site_id' => $this->_site_id));
-		$this->db->insert('mailchimp_subscribe_settings', array('site_id' => $this->_site_id, 'settings' => $settings));
+		$active_lists 		= $this->_settings['mailing_lists'];
+		$subscribe_to 		= array();
+		$unsubscribe_from	= array();
 		
-		return TRUE;
+		// Retrieve the member.
+		$member = $this->get_member_by_id($member_id);
+		
+		// Is the member banned?
+		if (in_array($member['group_id'], array('2', '4')))
+		{
+			throw new MCS_Data_exception('Unable to update subscriptions for banned member ' .$member['screen_name'] .' (' .$member_id .')');
+		}
+		
+		/**
+		 * Process the mailing lists.
+		 */
+		
+		foreach ($active_lists AS $list)
+		{
+			/**
+			 * If there is no trigger field, the member must be
+			 * subscribed to the list.
+			 */
+			
+			if ( ! $list['trigger_field'])
+			{
+				$subscribe_to[] = $list;
+				continue;
+			}
+			
+			/**
+			 * If there is a trigger field, we need to check whether
+			 * the member has opted-in to this list.
+			 */
+			
+			if (isset($member[$list['trigger_field']]) && $member[$list['trigger_field']] === $list['trigger_value'])
+			{
+				$subscribe_to[] = $list;
+			}
+			else
+			{
+				$unsubscribe_from[] = $list;
+			}
+		}
+		
+		// Do we have an work to do?
+		if (count($subscribe_to) == 0 && ($update == FALSE OR count($unsubscribe_from) == 0))
+		{
+			return;
+		}
+		
+		// Let's get APIing. That's totally a word.
+		foreach ($subscribe_to AS $list)
+		{
+			// Merge variables.
+			$merge_vars = array();
+			
+			if (isset($list['merge_vars']) && is_array($list['merge_vars']))
+			{
+				foreach ($list['merge_vars'] AS $id => $val)
+				{
+					if (isset($val['mailchimp_field_id']) && isset($val['member_field_id']) && isset($member[$val['member_field_id']]))
+					{
+						$merge_vars[$val['mailchimp_field_id']] = $member[$val['member_field_id']];
+					}
+				}
+			}
+			
+			// Interest groups.
+			if (isset($list['interest_groups']) && isset($member[$list['interest_groups']]))
+			{
+				$merge_vars['INTERESTS'] = $member[$list['interest_groups']];
+			}
+			
+			// Finally we can make the API call.
+			$this->_call_api('listSubscribe', array(
+				$list['list_id'],
+				$member['email'],
+				$merge_vars,
+				'html',				// Email format.
+				FALSE,				// Double opt-in?
+				(bool)$update		// Update existing subscription?
+			));
+		}
+		
+		// Process the unsubscriptions.
+		if ($update)
+		{
+			foreach ($unsubscribe_from AS $list)
+			{
+				$this->_call_api('listUnsubscribe', array($list['list_id'], $member['email']));
+			}
+		}
 	}
 	
 	
 	/**
 	 * Updates the settings from the input.
 	 *
-	 * @access	public
+	 * @access	private
+	 * @param 	array 		$settings		The settings to update.
 	 * @return	array
 	 */
-	public function update_settings_from_input()
+	private function _update_settings_from_input()
 	{
 		// Safety first.
 		$settings = array_merge($this->_get_default_settings(), $this->_settings);
@@ -364,62 +839,41 @@ class Mailchimp_model extends CI_Model {
 		// The mailing lists require rather more work.
 		if (is_array($lists = $this->_ee->input->get_post('mailing_lists')))
 		{
+			$settings['mailing_lists'] = array();
+			
 			foreach ($lists AS $list_id => $list_settings)
 			{
-				// We're only interested in 'active' lists.
 				if ( ! isset($list_settings['checked']))
 				{
 					continue;
 				}
 				
 				// Basic list information.
-				$list = new MCS_Mailing_list(array(
-					'list_id'			=> $list_id,
-					'trigger_field'		=> isset($list_settings['trigger_field']) ? $list_settings['trigger_field'] : '',
-					'trigger_value'		=> isset($list_settings['trigger_value']) ? $list_settings['trigger_value'] : ''
-				));
+				$list = array(
+					'list_id'		=> $list_id,
+					'trigger_field'	=> isset($list_settings['trigger_field']) ? $list_settings['trigger_field'] : '',
+					'trigger_value'	=> isset($list_settings['trigger_value']) ? $list_settings['trigger_value'] : '',
+					'interest_groups' => isset($list_settings['interest_groups']) ? $list_settings['interest_groups'] : '',
+					'merge_vars'	=> array()
+				);
 				
-				/*
 				// Merge variables.
 				if (isset($list_settings['merge_vars']) && is_array($list_settings['merge_vars']))
 				{
 					foreach ($list_settings['merge_vars'] AS $mailchimp_field_id => $member_field_id)
 					{
 						$list['merge_vars'][$mailchimp_field_id] = array(
-							'mailchimp_field_id'	=> $mailchimp_field_id,
-							'member_field_id'		=> $member_field_id
+							'mailchimp_field_id' => $mailchimp_field_id,
+							'member_field_id'	=> $member_field_id
 						);
 					}
 				}
-				*/
 				
-				// Add the mailing list to the settings.
 				$settings['mailing_lists'][$list_id] = $list;
 			}
 		}
 		
 		$this->_settings = $settings;
-		return $settings;
-	}
-	
-	
-	
-	/* --------------------------------------------------------------
-	 * PRIVATE METHODS
-	 * ------------------------------------------------------------ */
-	
-	/**
-	 * Builds the default settings array.
-	 *
-	 * @access	private
-	 * @return	array
-	 */
-	private function _get_default_settings()
-	{
-		return array(
-			'api_key'		=> '',
-			'mailing_lists'	=> array()
-		);
 	}
 	
 }
