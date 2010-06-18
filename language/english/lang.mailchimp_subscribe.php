@@ -19,34 +19,55 @@ $lang = array(
 'extension_description'	=> 'Effortlessly subscribe members of your ExpressionEngine site to one or more MailChimp mailing lists.',
 
 /* --------------------------------------------------------------
- * ERRORS
+ * API KEY
  * ------------------------------------------------------------ */
+'api_key'			=> 'API Key',
+'api_title'			=> 'API Settings',
 'missing_api_key'	=> 'API key not specified.',
-'api_error_intro'	=> 'MailChimp reported the following API error:',
-'error_code'		=> 'Error code',
-'error_message'		=> 'Error message',
+
+/* --------------------------------------------------------------
+ * ERROR LOG
+ * ------------------------------------------------------------ */
+'error_log_date'	=> 'Date',
+'error_log_code'	=> 'Code',
+'error_log_message'	=> 'Message',
+'error_log_title'	=> 'Error Log',
+'error_log_empty'	=> 'No errors have been logged.',
+
+/* --------------------------------------------------------------
+ * MAILING LISTS
+ * ------------------------------------------------------------ */
+'interest_groups'	=> 'Interest Groups',
+'get_lists'			=> 'Get Mailing Lists',
+'list_name'			=> 'Mailing List',
+'merge_variables'	=> 'Merge Variables',
+'no_mailing_lists'	=> 'There are no mailing lists to display.',
+'trigger_field'		=> 'Trigger Field',
+'trigger_value'		=> 'Trigger Value',
 
 /* --------------------------------------------------------------
  * NAVIGATION
  * ------------------------------------------------------------ */
+'nav_error_log'		=> 'Error Log',
+'nav_settings'		=> 'Settings',
+'nav_unsubscribe'	=> 'Unsubscribe URLs',
 
-'nav_settings'			=> 'Settings',
+/* --------------------------------------------------------------
+ * SETTINGS (GENERAL)
+ * ------------------------------------------------------------ */
+'save_settings'		=> 'Save Settings',
+'settings_not_saved' => 'Unable to save settings.',
+'settings_saved'	=> 'Settings saved.',
 
 
 /* --------------------------------------------------------------
- * SETTINGS
+ * UNSUBSCRIBE
  * ------------------------------------------------------------ */
-'api_key'				=> 'API Key',
-'api_title'				=> 'API Settings',
-'interest_groups'		=> 'Interest Groups',
-'get_lists'				=> 'Get Mailing Lists',
-'list_name'				=> 'Mailing List',
-'merge_variables'		=> 'Merge Variables',
-'save_settings'			=> 'Save Settings',
-'settings_not_saved'	=> 'Unable to save settings.',
-'settings_saved'		=> 'Settings saved.',
-'trigger_field'			=> 'Trigger Field',
-'trigger_value'			=> 'Trigger Value',
+'unsubscribe_title'	=> 'Unsubscribe URLs',
+'unsubscribe_list'	=> 'List Name',
+'unsubscribe_url'	=> 'Unsubscribe URL',
+'unsubscribe_no_mailing_lists' => 'There are no available mailing lists.',
+
 
 // All done.
 '' => ''

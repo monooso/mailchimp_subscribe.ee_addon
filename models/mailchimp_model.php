@@ -11,6 +11,7 @@
  */
 
 require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Exceptions' .EXT;
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class' .EXT;
 
 class Mailchimp_model extends CI_Model {
 	
@@ -59,6 +60,15 @@ class Mailchimp_model extends CI_Model {
 	private $_version = '2.0.0b1';
 	
 	/**
+	 * Mailing lists.
+	 *
+	 * @access	private
+	 * @var		array
+	 */
+	private $_mailing_lists = array();
+	
+	
+	/**
 	 * Member fields.
 	 *
 	 * @access	private
@@ -99,6 +109,17 @@ class Mailchimp_model extends CI_Model {
 		$this->_ee =& get_instance();
 		$this->_site_id = $this->_ee->config->item('site_id');
 		
+		/**
+		 * Annoying, this method is still called, even if the extension
+		 * isn't installed. We need to check if such nonsense is afoot,
+		 * and exit promptly if so.
+		 */
+		
+		if ( ! isset($this->_ee->extensions->version_numbers[$this->_extension_class]))
+		{
+			return;
+		}
+		
 		// Load and update the settings first.
 		$this->_load_settings_from_db();
 		$this->_update_settings_from_input();
@@ -107,12 +128,17 @@ class Mailchimp_model extends CI_Model {
 		$this->_load_member_fields_from_db();
 		
 		/**
-		 * If the API is set, load the account details and mailing lists from the
-		 * API, in that order. Also create a new API connector.
+		 * If the API key is set, do the following, in this order:
+		 * 1. Create a new API connector.
+		 * 2. Load the account details from the API.
+		 * 3. Load the mailing lists from the API.
 		 */
 		
 		if (isset($this->_settings['api_key']))
 		{
+			// Create a new connector object.
+			$this->_connector = new MCAPI($this->_settings['api_key']);
+			
 			try
 			{
 				$this->_load_account_from_api();
@@ -120,11 +146,8 @@ class Mailchimp_model extends CI_Model {
 			}
 			catch (MCS_exception $exception)
 			{
-				$this->log_error($exception->errorMessage, $exception->errorCode);
+				$this->log_error($exception->getMessage(), $exception->getCode());
 			}
-			
-			// Create a new connector object.
-			$this->_connector = new MCAPI($this->_settings['api_key']);
 		}
 	}
 	
@@ -172,7 +195,7 @@ class Mailchimp_model extends CI_Model {
 		
 		foreach ($hooks AS $hook)
 		{
-			$this->db->insert(
+			$this->_ee->db->insert(
 				'extensions',
 				array(
 					'class'		=> $this->_extension_class,
@@ -200,9 +223,9 @@ class Mailchimp_model extends CI_Model {
 		);
 		
 		$this->load->dbforge();
-		$this->dbforge->add_field($fields);
-		$this->dbforge->add_key('site_id', TRUE);
-		$this->dbforge->create_table('mailchimp_subscribe_settings', TRUE);
+		$this->_ee->dbforge->add_field($fields);
+		$this->_ee->dbforge->add_key('site_id', TRUE);
+		$this->_ee->dbforge->create_table('mailchimp_subscribe_settings', TRUE);
 		
 		// Create the 'error log' table.
 		$fields = array(
@@ -238,10 +261,10 @@ class Mailchimp_model extends CI_Model {
 			)
 		);
 		
-		$this->dbforge->add_field($fields);
-		$this->dbforge->add_key('error_log_id', TRUE);
-		$this->dbforge->add_key('site_id', FALSE);
-		$this->dbforge->create_table('mailchimp_subscribe_error_log', TRUE);
+		$this->_ee->dbforge->add_field($fields);
+		$this->_ee->dbforge->add_key('error_log_id', TRUE);
+		$this->_ee->dbforge->add_key('site_id', FALSE);
+		$this->_ee->dbforge->create_table('mailchimp_subscribe_error_log', TRUE);
 	}
 	
 	
@@ -253,11 +276,11 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function disable_extension()
 	{
-		$this->db->delete('extensions', array('class' => $this->_extension_class));
+		$this->_ee->db->delete('extensions', array('class' => $this->_extension_class));
 		
 		$this->load->dbforge();
-		$this->dbforge->drop_table('mailchimp_subscribe_settings');
-		$this->dbforge->drop_table('mailchimp_subscribe_error_log');
+		$this->_ee->dbforge->drop_table('mailchimp_subscribe_settings');
+		$this->_ee->dbforge->drop_table('mailchimp_subscribe_error_log');
 	}
 	
 	
@@ -281,7 +304,7 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function get_error_log()
 	{
-		$db_error_log = $this->db->get_where('mailchimp_subscribe_error_log', array('site_id' => $this->_site_id));
+		$db_error_log = $this->_ee->db->get_where('mailchimp_subscribe_error_log', array('site_id' => $this->_site_id));
 		return $db_error_log->result_array();
 	}
 	
@@ -344,7 +367,7 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function log_error($message = '', $code = '')
 	{
-		$this->db->insert(
+		$this->_ee->db->insert(
 			'mailchimp_subscribe_error_log',
 			array(
 				'site_id'		=> $this->_site_id,
@@ -366,8 +389,8 @@ class Mailchimp_model extends CI_Model {
 	{
 		$settings = addslashes(serialize($this->_settings));
 		
-		$this->db->delete('mailchimp_subscribe_settings', array('site_id' => $this->_site_id));
-		$this->db->insert('mailchimp_subscribe_settings', array('site_id' => $this->_site_id, 'settings' => $settings));
+		$this->_ee->db->delete('mailchimp_subscribe_settings', array('site_id' => $this->_site_id));
+		$this->_ee->db->insert('mailchimp_subscribe_settings', array('site_id' => $this->_site_id, 'settings' => $settings));
 		
 		return TRUE;
 	}
@@ -388,7 +411,7 @@ class Mailchimp_model extends CI_Model {
 		}
 		catch (MCS_Exception $exception)
 		{
-			$this->log_error($exception->errorMessage, $exception->errorCode);
+			$this->log_error($exception->getMessage(), $exception->getCode());
 		}
 	}
 	
@@ -408,7 +431,7 @@ class Mailchimp_model extends CI_Model {
 		}
 		catch (MCS_Exception $exception)
 		{
-			$this->log_error($exception->errorMessage, $exception->errorCode);
+			$this->log_error($exception->getMessage(), $exception->getCode());
 		}
 	}
 	
@@ -430,7 +453,7 @@ class Mailchimp_model extends CI_Model {
 		// Update the version number.
 		if ($current_version < $this->_version)
 		{
-			$this->db->update(
+			$this->_ee->db->update(
 				'extensions',
 				array('version' => $this->_version),
 				array('class' => $this->_extension_class)
@@ -470,7 +493,7 @@ class Mailchimp_model extends CI_Model {
 		$result = call_user_func_array(array($this->_connector, $method), $params);
 		
 		// Was the connector method called successfully?
-		if ( ! $result)
+		if ($result === FALSE)
 		{
 			throw new MCS_Api_exception('Unable to call API method "' .$method .'".');
 		}
@@ -585,7 +608,7 @@ class Mailchimp_model extends CI_Model {
 			}
 			catch (MCS_Exception $exception)
 			{
-				if ($exception->errorCode !== 211)
+				if ($exception->getCode() !== 211)
 				{
 					throw $exception;
 				}
@@ -600,7 +623,7 @@ class Mailchimp_model extends CI_Model {
 				'list_id'			=> $r['id'],
 				'list_name'			=> $r['name'],
 				'merge_vars'		=> $merge_vars,
-				'unsubscribe_url'	=> isset($this->_api_account['user_id']) ? printf($unsubscribe_url, $this->_api_account['user_id'], $r['id']) : ''
+				'unsubscribe_url'	=> isset($this->_api_account['user_id']) ? sprintf($unsubscribe_url, $this->_api_account['user_id'], $r['id']) : ''
 			);
 		}
 		
@@ -651,7 +674,7 @@ class Mailchimp_model extends CI_Model {
 		);
 		
 		// Load the custom member fields.
-		$db_member_fields = $this->db->select('m_field_id, m_field_label, m_field_type, m_field_list_items')->get('member_fields');
+		$db_member_fields = $this->_ee->db->select('m_field_id, m_field_label, m_field_type, m_field_list_items')->get('member_fields');
 		
 		if ($db_member_fields->num_rows() > 0)
 		{
@@ -681,7 +704,7 @@ class Mailchimp_model extends CI_Model {
 		$settings = $this->_get_default_settings();
 		
 		// Load the settings from the database.
-		$db_settings = $this->db->select('settings')->get_where(
+		$db_settings = $this->_ee->db->select('settings')->get_where(
 			'mailchimp_subscribe_settings',
 			array('site_id' => $this->_site_id),
 			1

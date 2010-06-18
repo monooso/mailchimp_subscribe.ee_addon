@@ -108,8 +108,9 @@ class Mailchimp_subscribe_ext {
 		
 		// Define the navigation.
 		$this->_ee->cp->set_right_nav(array(
-			'nav_items'		=> '#',
-			'nav_settings'	=> '#'
+			'nav_settings'		=> '#settings',
+			'nav_unsubscribe'	=> '#unsubscribe',
+			'nav_error_log'		=> '#errors'
 		));
 	}
 	
@@ -183,7 +184,6 @@ class Mailchimp_subscribe_ext {
 			'cp_page_title'			=> $this->_ee->lang->line('extension_name'),
 			'error_log'				=> $this->_ee->mailchimp_model->get_error_log(),
 			'hidden_fields'			=> array('file' => strtolower(substr(get_class($this), 0, -4))),
-			'js_language_strings'	=> array('missingApiKey' => $this->_ee->lang->line('missing_api_key')),
 			'mailing_lists'			=> $this->_ee->mailchimp_model->get_mailing_lists(),
 			'member_fields'			=> $member_fields,
 			'member_field_options' 	=> $member_field_options,
@@ -198,6 +198,19 @@ class Mailchimp_subscribe_ext {
 		}
 		else
 		{
+			// Include the JavaScript.
+			$this->_ee->load->library('javascript');
+			
+			$this->_ee->cp->add_js_script(array('package' => 'mailchimp_subscribe'));
+			
+			$this->_ee->javascript->set_global('mailChimp.lang', array(
+				'missingApiKey' => $this->_ee->lang->line('missing_api_key')
+			));
+			
+			$this->_ee->javascript->set_global('mailChimp.globals.ajaxUrl', str_replace(AMP, '&', BASE) .'&C=addons_extensions&M=extension_settings&file=mailchimp_subscribe');
+			$this->_ee->javascript->compile();
+			
+			// Load the view.
 			return $this->_ee->load->view('settings', $vars, TRUE);
 		}
 	}

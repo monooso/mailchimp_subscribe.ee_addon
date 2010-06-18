@@ -1,3 +1,5 @@
+<div id="sjl">
+<div class="clearfix content_block" id="settings">
 <?php
 
 echo form_open($action_url, '', $hidden_fields);
@@ -34,10 +36,7 @@ $this->table->clear();
 ?>
 
 <!-- Mailing Lists -->
-<div id="mc_lists"></div>
-
-<!-- Loading Message : Is this required? Does EE have something built-in -->
-<div id="mc_loading"></div>
+<div id="mailchimp_lists"></div>
 
 <!-- Submit Button -->
 <div class="tableFooter"><div class="tableSubmit">
@@ -45,133 +44,80 @@ $this->table->clear();
 </div></div>
 
 </form>
+</div><!-- /#settings -->
 
-<!-- MailChimp JavaScript -->
-<script type="text/javascript">
 
-(function($) {
+<!-- Unsubscribe URLs -->
+<div class="clearfix content_block" id="unsubscribe">
+<h2><?=lang('unsubscribe_title'); ?></h2>
+<?php
 	
-	var ajaxUrl = '<?=str_replace(AMP, "&", BASE); ?>&C=addons_extensions&M=extension_settings&file=mailchimp_subscribe';
-	var loading = false;
+if ($mailing_lists):
 	
-	var languageStrings = {
-	<?php
-		$output = '';
-		foreach ($js_language_strings AS $id => $val)
-		{
-			$output .= "{$id} : \"{$val}\",\n";
-		}
-		$output = rtrim($output, ",\n");
-		echo $output;
-	?>
-	};
+	$this->table->set_template($cp_pad_table_template);
 	
+	$this->table->set_heading(
+		array('data' => lang('unsusbscribe_list'), 'style' => 'width : 25%'),
+		lang('unsusbscribe_url')
+	);
 	
-	/**
-	 * Retrieves the 'mailing lists' HTML via AJAX.
-	 *
-	 * @return	void
-	 */
-	function getLists() {
-		if (loading) return;
-		
-		apiKey = $('#api_key').val();
-		
-		if ( ! apiKey) {
-			alert(languageStrings.missingApiKey);
-			$('#api_key').focus();
-			return;
-		}
-		
-		startLoading();
+	foreach ($mailing_lists AS $list):
+	
+		$this->table->add_row(array($list['list_name'], $list['unsubscribe_url']));
+	
+	endforeach;
 
-		/*
-		$.get(
-			ajaxUrl,
-			{ajax_request : 'y', addon_id : addonId, api_key : apiKey, action : 'get_lists'},
-			handleGetListsResponse,
-			'html'
-		);
-		*/
-		$.get(ajaxUrl, {api_key : apiKey}, handleGetListsResponse, 'html');
-	};
+	echo $this->table->generate();
+	$this->table->clear();
 	
-	
-	/**
-	 * Handles the getLists AJAX response.
-	 *
-	 * @param 	string		response		The AJAX response in JSON format.
-	 * @return	void
-	 */
-	function handleGetListsResponse(response) {
-		
-		$('#mc_lists').html(eval(response));
-		// iniTriggerField();
-		
-		// $.ee_notice('FTW!', {'type' : 'success'}); // Unlikely to use this, but here so I remember about its existence.
-		stopLoading();
-	};
-	
-	
-	/**
-	 * Hijacks the 'Get Mailing Lists' link.
-	 *
-	 * @return	void
-	 */
-	function iniAjaxLinks() {
-		$('#get_lists')
-			.bind('click', function(e) {getLists();})
-			.bind('keydown', function(e) {
-				if (e.keyCode == '13' || e.keyCode == '32') {
-					$(e.target).click();
-				}
-			});
-	};
-	
-	
-	/**
-	 * Starts the loading animation.
-	 *
-	 * @return 	void
-	 */
-	function startLoading() {
-		loading = true;
-		
-		$('#mc_loading').css({
-			'top'		: $(window).scrollTop(),
-			'left'		: $(window).scrollLeft(),
-			'width'		: $(window).width(),
-			'height'	: $(window).height()
-		});
+else:
 
-		$(window).bind('scroll', function() {
-			$('#mc_loading').css({'top' : $(window).scrollTop(), 'left' : $(window).scrollLeft()});
-		}).bind('resize', function() {
-			$('#mc_loading').css({'width' : $(window).width(), 'height' : $(window).height()});
-		});
+	echo lang('unsubscribe_no_mailing_lists');
 
-		$('#mc_loading').fadeIn('fast');
-	};
-	
-	
-	/**
-	 * Stops the loading animation.
-	 *
-	 * @return 	void
-	 */
-	function stopLoading() {
-		loading = false;
-		
-		$(window).unbind('scroll').unbind('resize');
-		$('#mc_loading').fadeOut('fast');
-	};
-	
-	
-	// Start the ball rolling.
-	$(document).ready(function() {
-		iniAjaxLinks();
-	});
-	
-})(jQuery);
+endif;
 
-</script>
+?>
+</div><!-- /#unsubscribe -->
+
+
+<!-- Error Log -->
+<div class="clearfix content_block" id="errors">
+<h2><?=lang('error_log_title'); ?></h2>
+<?php
+	
+if ($error_log):
+	
+	$this->table->set_template($cp_pad_table_template);
+	
+	$this->table->set_heading(
+		array('data' => lang('error_log_date'), 'style' => 'width : 15%'),
+		array('data' => lang('error_log_code'), 'style' => 'width : 15%'),
+		lang('error_log_message')
+	);
+	
+	foreach ($mailing_lists AS $list):
+	
+		$this->table->add_row(array(
+			date('Y-m-d', intval($error['error_date'])),
+			$error['error_code'],
+			$error['error_message']
+		));
+	
+	endforeach;
+
+	echo $this->table->generate();
+	$this->table->clear();
+	
+else:
+
+	echo lang('error_log_empty');
+
+endif;
+
+?>
+</div><!-- /#error-log -->
+
+<!-- Loading Message : Is this required? Does EE have something built-in -->
+<div id="mailchimp_loading"></div>
+
+</div><!-- /#sjl -->
