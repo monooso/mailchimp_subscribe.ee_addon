@@ -37,13 +37,16 @@ $lang = array(
 /* --------------------------------------------------------------
  * MAILING LISTS
  * ------------------------------------------------------------ */
-'interest_groups'	=> 'Interest Groups',
-'get_lists'			=> 'Get Mailing Lists',
-'list_name'			=> 'Mailing List',
-'merge_variables'	=> 'Merge Variables',
-'no_mailing_lists'	=> 'There are no mailing lists to display.',
-'trigger_field'		=> 'Trigger Field',
-'trigger_value'		=> 'Trigger Value',
+'interest_groups'		=> 'Interest Groups',
+'get_lists'				=> 'Get Mailing Lists',
+'list_name'				=> 'Mailing List',
+'merge_variables'		=> 'Merge Variables',
+'no_mailing_lists'		=> 'There are no mailing lists to display.',
+'no_merge_variables'	=> 'There are no merge variables to display.',
+'no_interest_groups'	=> 'There are no interest groups for this list.',
+'trigger_field'			=> 'Trigger Field',
+'trigger_field_hint' 	=> 'Select member field...',
+'trigger_value'			=> 'Trigger Value',
 
 /* --------------------------------------------------------------
  * NAVIGATION
@@ -58,7 +61,6 @@ $lang = array(
 'save_settings'		=> 'Save Settings',
 'settings_not_saved' => 'Unable to save settings.',
 'settings_saved'	=> 'Settings saved.',
-
 
 /* --------------------------------------------------------------
  * UNSUBSCRIBE
@@ -75,5 +77,5 @@ $lang = array(
 );
 
 
-/* End of file		: lang.mailchimp_subscribe_ext.php */
-/* File location	: /system/expressionengine/third_party/mailchimp_subscribe/language/english/lang.mailchimp_subscribe_ext.php */
+/* End of file		: lang.mailchimp_subscribe.php */
+/* File location	: /system/expressionengine/third_party/mailchimp_subscribe/language/english/lang.mailchimp_subscribe.php */
