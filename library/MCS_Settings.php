@@ -157,6 +157,18 @@ class MCS_Settings extends MCS_Base {
 	
 	
 	/**
+	 * Resets the mailing lists array.
+	 *
+	 * @access	public
+	 * @return	void
+	 */
+	public function reset_mailing_lists()
+	{
+		$this->_mailing_lists = array();
+	}
+	
+	
+	/**
 	 * Returns the class instance as an array.
 	 *
 	 * @access	public

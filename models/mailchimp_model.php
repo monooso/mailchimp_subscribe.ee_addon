@@ -7,7 +7,7 @@
  * @license		??
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.0b1
+ * @version		2.0.0b2
  */
 
 require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class' .EXT;
@@ -123,7 +123,7 @@ class Mailchimp_model extends CI_Model {
 	public function __construct()
 	{
 		$this->_extension_class = 'Mailchimp_subscribe_ext';
-		$this->_version			= '2.0.0b1';
+		$this->_version			= '2.0.0b2';
 		
 		$this->_ee 				=& get_instance();
 		$this->_site_id 		= $this->_ee->config->item('site_id');
@@ -420,49 +420,55 @@ class Mailchimp_model extends CI_Model {
 		
 			// Basic view settings.
 			$view_settings = new MCS_Settings($saved_settings->to_array());
-			$view_settings->mailing_lists = array();
+			$view_settings->reset_mailing_lists();
 		
-			// Loop through all of the mailing lists.
+			// Loop through the mailing lists.
 			foreach ($mailing_lists AS $mailing_list)
 			{
-				$temp_list = $saved_settings->get_mailing_list($mailing_list->id)
+				$old_list = $saved_settings->get_mailing_list($mailing_list->id)
 					? $saved_settings->get_mailing_list($mailing_list->id)
 					: new MCS_Mailing_list();
 				
-				$temp_list->id = $mailing_list->id;
-				$temp_list->name = $mailing_list->name;
-				$temp_list->unsubscribe_url = $this->_api_account->user_id
-					? sprintf($unsubscribe_url, $this->_api_account->user_id, $mailing_list->id)
-					: '';
+				// Create the new mailing list.
+				$new_list = new MCS_Mailing_list(array(
+					'active'			=> $old_list->active,
+					'id'				=> $mailing_list->id,
+					'name'				=> $mailing_list->name,
+					'trigger_field'		=> $old_list->trigger_field,
+					'trigger_value'		=> $old_list->trigger_value,
+					'unsubscribe_url'	=> $this->_api_account->user_id
+											? sprintf($unsubscribe_url, $this->_api_account->user_id, $mailing_list->id)
+											: ''
+				));
 			
 				// Interest Groups.
 				foreach ($mailing_list->interest_groups AS $key => $val)
 				{
-					$temp_group = $temp_list->get_interest_group($key)
-						? $temp_list->get_interest_group($key)
+					$temp_group = $old_list->get_interest_group($key)
+						? $old_list->get_interest_group($key)
 						: new MCS_Interest_group();
 					
-					$temp_group->id = $val->id;
-					$temp_group->name = $val->name;
+					$temp_group->id 	= $val->id;
+					$temp_group->name 	= $val->name;
 				
-					$temp_list->add_interest_group($temp_group);
+					$new_list->add_interest_group($temp_group);
 				}
 			
 				// Merge Variables.
 				foreach ($mailing_list->merge_variables AS $key => $val)
 				{
-					$temp_var = $temp_list->get_merge_variable($key)
-						? $temp_list->get_merge_variable($key)
+					$temp_var = $old_list->get_merge_variable($key)
+						? $old_list->get_merge_variable($key)
 						: new MCS_Merge_variable();
 					
-					$temp_var->tag = $val->tag;
-					$temp_var->name = $val->name;
+					$temp_var->tag	= $val->tag;
+					$temp_var->name	= $val->name;
 				
-					$temp_list->add_merge_variable($temp_var);
+					$new_list->add_merge_variable($temp_var);
 				}
 			
 				// Update the saved settings.
-				$view_settings->add_mailing_list($temp_list);
+				$view_settings->add_mailing_list($new_list);
 			}
 		
 			$this->_view_settings = $view_settings;
