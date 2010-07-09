@@ -22,15 +22,19 @@ margin-bottom : 10px;
 
 /* =loading
  -------------------------------------------------------------*/
-#sjl #mailchimp_loading {
+#mailchimp_loading {
 background : rgb(0, 0, 0);
 display : none;
 opacity : 0.9;
 position : absolute;
 }
 
-#sjl #mailchimp_loading p {
-background : rgb(0, 0, 0);
+/**
+ * This is horrendous. It is also, apparently, the standard way of doing things in EE2.
+ */
+
+#mailchimp_loading p {
+background : rgb(0, 0, 0) url('../img/loading.gif') no-repeat 50% 50%;
 border : 2px solid rgb(51, 51, 51);
 height : 32px;
 left : 50%;

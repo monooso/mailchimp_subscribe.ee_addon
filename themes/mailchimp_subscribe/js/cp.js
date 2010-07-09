@@ -64,6 +64,16 @@
 	
 	
 	/**
+	 * Initialises the 'loading' message.
+	 *
+	 * @return	void
+	 */
+	function iniLoadingMessage() {
+		$('body').append('<div id="mailchimp_loading"><p></p></div>');
+	}
+	
+	
+	/**
 	 * Adds a handler to any 'trigger field' drop-downs.
 	 *
 	 * @return 	void
@@ -171,6 +181,7 @@
 	
 	// Start the ball rolling.
 	$(document).ready(function() {
+		iniLoadingMessage();
 		iniJson();
 		iniAjaxLinks();
 		iniTriggerFields();

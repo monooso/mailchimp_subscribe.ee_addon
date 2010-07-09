@@ -99,6 +99,14 @@ class Mailchimp_model extends CI_Model {
 	private $_site_id = '1';
 	
 	/**
+	 * The `theme` folder URL for this add-on.
+	 *
+	 * @access	private
+	 * @var		string
+	 */
+	private $_theme_folder_url = '';
+	
+	/**
 	 * The 'view' settings. That is, the saved settings, plus any additional
 	 * mailing lists, all wrapped up in a neat little MCS_Settings object, for
 	 * use in the view.
@@ -389,6 +397,26 @@ class Mailchimp_model extends CI_Model {
 	public function get_settings()
 	{
 		return $this->_settings;
+	}
+	
+	
+	/**
+	 * Returns the `theme` folder URL.
+	 *
+	 * @access	public
+	 * @return	string
+	 */
+	public function get_theme_url()
+	{
+		if ( ! $this->_theme_folder_url)
+		{
+			$this->_theme_folder_url = $this->_ee->config->item('theme_folder_url');
+			$this->_theme_folder_url .= substr($this->_theme_folder_url, -1) == '/'
+				? 'mailchimp_subscribe/'
+				: '/mailchimp_subscribe/';
+		}
+		
+		return $this->_theme_folder_url;
 	}
 	
 	

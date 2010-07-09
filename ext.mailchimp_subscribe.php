@@ -395,22 +395,27 @@ class Mailchimp_subscribe_ext {
 		}
 		else
 		{
+			// Retrieve the theme folder URL.
+			$theme_url = $this->_ee->mailchimp_model->get_theme_url();
+			
 			// Include the JavaScript.
 			$this->_ee->load->library('javascript');
 			
-			$this->_ee->cp->add_js_script(array('package' => 'mailchimp_subscribe'));
-			
+			// Set the global variables.
 			$this->_ee->javascript->set_global('mailChimp.lang', array(
 				'missingApiKey' => $this->_ee->lang->line('missing_api_key')
 			));
 			
 			$this->_ee->javascript->set_global('mailChimp.memberFields', $this->_ee->javascript->generate_json($member_fields));
-			
 			$this->_ee->javascript->set_global('mailChimp.globals.ajaxUrl', str_replace(AMP, '&', BASE) .'&C=addons_extensions&M=extension_settings&file=mailchimp_subscribe');
+			
+			// Include the main JS file.
+			$this->_ee->cp->add_to_foot('<script type="text/javascript" src="' .$theme_url .'js/cp.js"></script>');
+			
 			$this->_ee->javascript->compile();
 			
 			// Include the CSS.
-			$this->_ee->cp->load_package_css('mailchimp_subscribe');
+			$this->_ee->cp->add_to_foot('<link media="screen, projection" rel="stylesheet" type="text/css" href="' .$theme_url .'css/cp.css" />');
 			
 			// Load the view.
 			return $this->_ee->load->view('settings', $vars, TRUE);
