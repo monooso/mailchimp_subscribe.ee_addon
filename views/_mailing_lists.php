@@ -8,12 +8,12 @@ $tabindex = 50;
 
 $this->table->set_template($cp_pad_table_template);
 $this->table->set_heading(
-	array('data' => '&nbsp;', 'style' => 'width : 4%'),
+	array('data' => '', 'style' => 'width : 4%'),
 	array('data' => lang('list_name'), 'style' => 'width : 21%'),
 	lang('trigger_field'),
-	lang('trigger_value'),
-	lang('interest_groups'),
-	array('data' => lang('merge_variables'), 'style' => 'width : 30%;')
+	array('data' => lang('trigger_value'), 'style' => 'width : 10%'),
+	array('data' => lang('interest_groups'), 'style' => 'width : 25%;'),
+	array('data' => lang('merge_variables'), 'style' => 'width : 25%;')
 );
 
 if ($view_settings->mailing_lists):
@@ -64,7 +64,7 @@ if ($view_settings->mailing_lists):
 	
 			$row[] = form_input(array(
 				'id'	=> "mailing_lists[{$list->id}][trigger_value]",
-				'class'	=> 'fullfield',
+				'class'	=> 'field',
 				'name'	=> "mailing_lists[{$list->id}][trigger_value]",
 				'tabindex'	=> $tabindex += 10,
 				'value'	=> $list->trigger_value
@@ -79,25 +79,23 @@ if ($view_settings->mailing_lists):
 			
 			foreach ($list->interest_groups AS $group):
 			
-				$cell .= '<label style="display : block; margin-bottom : 10px;">'
-					.$group->name
+				$cell .= '<label>' .$group->name .'</label>'
 					.form_dropdown(
 						"mailing_lists[{$list->id}][interest_groups][{$group->id}]",
 						$cleaned_member_fields,
 						$group->member_field_id,
 						"id='mailing_lists[{$list->id}][interest_groups][{$group->id}]' tabindex='" .($tabindex += 10) ."'"
-					)
-					.'</label>';
+					);
 			
 			endforeach;
 				
 		else:
 			
-			$cell = lang('no_interest_groups');
+			$cell = '<p>' .lang('no_interest_groups') .'</p>';
 	
 		endif;
 		
-		$row[] = $cell;
+		$row[] = array('class' => 'stacked', 'data' => $cell);
 	
 		// Merge variables.
 		if ($list->merge_variables):
@@ -111,25 +109,23 @@ if ($view_settings->mailing_lists):
 					continue;
 				endif;
 				
-				$cell .= '<label style="display : block; margin-bottom : 10px;">'
-					.$var->name
+				$cell .= '<label>' .$var->name .'</label>'
 					.form_dropdown(
 						"mailing_lists[{$list->id}][merge_variables][{$var->tag}]",
 						$cleaned_member_fields,
 						$var->member_field_id,
 						"id='mailing_lists[{$list->id}][merge_variables][{$var->id}]' tabindex='" .($tabindex += 10) ."'"
-					)
-					.'</label>';
+					);
 			
 			endforeach;
 				
 		else:
 			
-			$cell = lang('no_merge_variables');
+			$cell = '<p>' .lang('no_merge_variables') .'</p>';
 	
 		endif;
 		
-		$row[] = $cell;
+		$row[] = array('class' => 'stacked', 'data' => $cell);
 	
 		// Add the row to the table.
 		$this->table->add_row($row);

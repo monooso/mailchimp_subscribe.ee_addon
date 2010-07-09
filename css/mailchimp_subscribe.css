@@ -1,3 +1,25 @@
+/* =mailchimp_lists
+ -------------------------------------------------------------*/
+#mailchimp_lists td {
+padding-top : 2.15em;
+vertical-align : top;
+}
+
+#mailchimp_lists td.stacked {padding-top : 0.5em;}
+
+#mailchimp_lists .stacked label {
+display : block;
+font-weight : normal;
+}
+
+#mailchimp_lists .stacked select {
+display : block;
+margin-bottom : 10px;
+}
+
+#mailchimp_lists .stacked p {padding-top : 1.5em;}
+
+
 /* =loading
  -------------------------------------------------------------*/
 #sjl #mailchimp_loading {

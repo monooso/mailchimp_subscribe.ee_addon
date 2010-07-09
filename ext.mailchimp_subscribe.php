@@ -409,6 +409,9 @@ class Mailchimp_subscribe_ext {
 			$this->_ee->javascript->set_global('mailChimp.globals.ajaxUrl', str_replace(AMP, '&', BASE) .'&C=addons_extensions&M=extension_settings&file=mailchimp_subscribe');
 			$this->_ee->javascript->compile();
 			
+			// Include the CSS.
+			$this->_ee->cp->load_package_css('mailchimp_subscribe');
+			
 			// Load the view.
 			return $this->_ee->load->view('settings', $vars, TRUE);
 		}

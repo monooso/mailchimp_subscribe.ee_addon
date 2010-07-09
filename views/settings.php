@@ -25,7 +25,7 @@ $this->table->add_row(array(
 			'content'	=> lang('get_lists'),
 			'name'		=> 'get_lists'
 		)),
-		'style' => 'width : 30%;'
+		'style' => 'width : 25%;'
 	)
 ));
 
@@ -51,8 +51,4 @@ $this->table->clear();
 </div></div>
 
 </form>
-
-<!-- Loading Message : Is this required? Does EE have something built-in -->
-<div id="mailchimp_loading"></div>
-
 </div><!-- /#sjl -->
