@@ -3,7 +3,6 @@
 /**
  * API Account data class. Very basic implementation.
  *
- * @abstract
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
  * @package		MailChimp Subscribe
  */

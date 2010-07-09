@@ -4,10 +4,7 @@
  * Effortlessly add members of your ExpressionEngine site to your MailChimp mailing lists.
  *
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
- * @license		??
- * @link 		http://experienceinternet.co.uk/software/mailchimp_subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.0b1
  */
 
 $lang = array(

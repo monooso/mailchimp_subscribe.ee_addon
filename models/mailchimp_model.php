@@ -4,7 +4,6 @@
  * Handles all the API and database communication for MailChimp Subscribe.
  *
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
- * @license		??
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
  * @version		2.0.0b2
