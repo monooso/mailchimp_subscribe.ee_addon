@@ -387,6 +387,7 @@ class Mailchimp_subscribe_ext {
 			// Update the settings with any input data.
 			$this->_ee->mailchimp_model->update_settings_from_input();
 			
+			// Update the view settings.
 			$vars['view_settings'] = $this->_ee->mailchimp_model->get_view_settings();
 			
 			$output = $this->_ee->load->view('_mailing_lists', $vars, TRUE);

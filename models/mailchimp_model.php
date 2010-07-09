@@ -125,11 +125,11 @@ class Mailchimp_model extends CI_Model {
 		$this->_extension_class = 'Mailchimp_subscribe_ext';
 		$this->_version			= '2.0.0b2';
 		
-		$this->_ee 				=& get_instance();
-		$this->_site_id 		= $this->_ee->config->item('site_id');
+		$this->_ee 		=& get_instance();
+		$this->_site_id = $this->_ee->config->item('site_id');
 		
 		/**
-		 * Annoying, this method is still called, even if the extension
+		 * Annoyingly, this method is still called, even if the extension
 		 * isn't installed. We need to check if such nonsense is afoot,
 		 * and exit promptly if so.
 		 */
@@ -144,29 +144,6 @@ class Mailchimp_model extends CI_Model {
 		
 		// Load the member fields from the database.
 		$this->_load_member_fields_from_db();
-		
-		/**
-		 * If the API key is set, do the following, in this order:
-		 * 1. Create a new API connector.
-		 * 2. Load the account details from the API.
-		 * 3. Load the mailing lists from the API.
-		 */
-		
-		if ($this->_settings->api_key)
-		{
-			// Create a new connector object.
-			$this->_connector = new MCAPI($this->_settings->api_key);
-			
-			try
-			{
-				$this->_load_account_from_api();
-				$this->_load_mailing_lists_from_api();
-			}
-			catch (MCS_exception $exception)
-			{
-				$this->log_error($exception->getMessage(), $exception->getCode());
-			}
-		}
 	}
 	
 	
@@ -310,6 +287,18 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function get_api_account()
 	{
+		if ( ! $this->_api_account)
+		{
+			try
+			{
+				$this->_load_account_from_api();
+			}
+			catch (MCS_exception $exception)
+			{
+				$this->log_error($exception->getMessage(), $exception->getCode());
+			}
+		}
+		
 		return $this->_api_account;
 	}
 	
@@ -322,7 +311,10 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function get_error_log()
 	{
-		$db_error_log = $this->_ee->db->get_where('mailchimp_subscribe_error_log', array('site_id' => $this->_site_id));
+		$db_error_log = $this->_ee->db
+			->order_by('error_log_id', 'desc')
+			->get_where('mailchimp_subscribe_error_log', array('site_id' => $this->_site_id));
+		
 		return $db_error_log->result_array();
 	}
 	
@@ -335,6 +327,18 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function get_mailing_lists()
 	{
+		if ( ! $this->_mailing_lists)
+		{
+			try
+			{
+				$this->_load_mailing_lists_from_api();
+			}
+			catch (MCS_exception $exception)
+			{
+				$this->log_error($exception->getMessage(), $exception->getCode());
+			}
+		}
+		
 		return $this->_mailing_lists;
 	}
 	
@@ -417,6 +421,7 @@ class Mailchimp_model extends CI_Model {
 			
 			$saved_settings = $this->get_settings();
 			$mailing_lists	= $this->get_mailing_lists();
+			$api_account	= $this->get_api_account();
 		
 			// Basic view settings.
 			$view_settings = new MCS_Settings($saved_settings->to_array());
@@ -436,8 +441,8 @@ class Mailchimp_model extends CI_Model {
 					'name'				=> $mailing_list->name,
 					'trigger_field'		=> $old_list->trigger_field,
 					'trigger_value'		=> $old_list->trigger_value,
-					'unsubscribe_url'	=> $this->_api_account->user_id
-											? sprintf($unsubscribe_url, $this->_api_account->user_id, $mailing_list->id)
+					'unsubscribe_url'	=> $api_account->user_id
+											? sprintf($unsubscribe_url, $api_account->user_id, $mailing_list->id)
 											: ''
 				));
 			
@@ -597,7 +602,7 @@ class Mailchimp_model extends CI_Model {
 		$settings = $this->_settings;
 		
 		// Update the API key. This is the easy bit.
-		$settings->api_key = $this->_ee->input->get_post('api_key')
+		$settings->api_key = ($this->_ee->input->get_post('api_key') !== FALSE)
 			? $this->_ee->input->get_post('api_key')
 			: $settings->api_key;
 			
@@ -649,6 +654,9 @@ class Mailchimp_model extends CI_Model {
 		}
 		
 		$this->_settings = $settings;
+		
+		// The view settings are probably out-of-date, so reset them.
+		$this->_view_settings = NULL;
 	}
 	
 	
@@ -667,10 +675,10 @@ class Mailchimp_model extends CI_Model {
 	 */
 	private function _call_api($method = '', Array $params = array())
 	{
-		// Do we have an API key?
-		if ( ! $this->_settings->api_key)
+		// Do we have a valid connector?
+		if ( ! $this->_initialize_connector())
 		{
-			throw new MCS_Data_exception('Unable to call API method "' .$method .'" (missing API key).');
+			throw new MCS_Data_exception('Unable to initialize connector object.');
 		}
 		
 		if ( ! method_exists($this->_connector, $method))
@@ -693,6 +701,29 @@ class Mailchimp_model extends CI_Model {
 		}
 		
 		return $result;
+	}
+	
+	
+	/**
+	 * Attempts to initialise the MailChimp API 'connector'.
+	 *
+	 * @access	private
+	 * @return	bool
+	 */
+	private function _initialize_connector()
+	{
+		// Once the connector has been created, we're good.
+		if ($this->_connector)
+		{
+			return TRUE;
+		}
+		
+		// If we have an API key, create the connector.
+		$this->_connector = $this->_settings->api_key
+			? new MCAPI($this->_settings->api_key)
+			: NULL;
+		
+		return ( ! is_null($this->_connector));
 	}
 	
 	

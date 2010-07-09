@@ -28,6 +28,7 @@ $lang = array(
 /* --------------------------------------------------------------
  * ERROR LOG
  * ------------------------------------------------------------ */
+'error_log_id'		=> 'ID',
 'error_log_date'	=> 'Date',
 'error_log_code'	=> 'Code',
 'error_log_message'	=> 'Message',

@@ -5,6 +5,7 @@ if ($error_log):
 	$this->table->set_template($cp_pad_table_template);
 	
 	$this->table->set_heading(
+		array('data' => lang('error_log_id'), 'style' => 'width : 3%'),
 		array('data' => lang('error_log_date'), 'style' => 'width : 15%'),
 		array('data' => lang('error_log_code'), 'style' => 'width : 15%'),
 		lang('error_log_message')
@@ -13,7 +14,8 @@ if ($error_log):
 	foreach ($error_log AS $error):
 	
 		$this->table->add_row(array(
-			date('Y-m-d', intval($error['error_date'])),
+			$error['error_log_id'],
+			date('Y-m-d H:i:s', intval($error['error_date'])),
 			$error['error_code'],
 			$error['error_message']
 		));
