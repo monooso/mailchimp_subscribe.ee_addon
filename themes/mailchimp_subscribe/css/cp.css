@@ -29,10 +29,6 @@ opacity : 0.9;
 position : absolute;
 }
 
-/**
- * This is horrendous. It is also, apparently, the standard way of doing things in EE2.
- */
-
 #mailchimp_loading p {
 background : rgb(0, 0, 0) url('../img/loading.gif') no-repeat 50% 50%;
 border : 2px solid rgb(51, 51, 51);
