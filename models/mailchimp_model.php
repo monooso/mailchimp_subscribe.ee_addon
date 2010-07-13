@@ -411,8 +411,8 @@ class Mailchimp_model extends CI_Model {
 		{
 			$this->_theme_folder_url = $this->_ee->config->item('theme_folder_url');
 			$this->_theme_folder_url .= substr($this->_theme_folder_url, -1) == '/'
-				? 'mailchimp_subscribe/'
-				: '/mailchimp_subscribe/';
+				? 'third_party/mailchimp_subscribe/'
+				: '/third_party/mailchimp_subscribe/';
 		}
 		
 		return $this->_theme_folder_url;
