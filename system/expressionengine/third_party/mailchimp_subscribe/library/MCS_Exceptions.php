@@ -4,9 +4,7 @@
  * MailChimp Subscribe exception classes.
  *
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
- * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.0b1
  */
 
 class MCS_Exception extends Exception {}

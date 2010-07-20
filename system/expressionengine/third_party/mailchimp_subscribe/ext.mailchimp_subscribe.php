@@ -6,7 +6,6 @@
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.0b2
  */
 
 class Mailchimp_subscribe_ext {
