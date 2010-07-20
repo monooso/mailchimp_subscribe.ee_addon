@@ -441,6 +441,13 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function get_view_settings()
 	{
+		// No point hanging around if there's no API key.
+		if ( ! $this->_settings->api_key)
+		{
+			$this->_view_settings = new MCS_Settings();
+			return $this->_view_settings;
+		}
+		
 		if ( ! $this->_view_settings)
 		{
 			// Base unsubscribe URL.
