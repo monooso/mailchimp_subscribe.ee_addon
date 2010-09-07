@@ -6,7 +6,7 @@
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.0
+ * @version		2.0.1
  */
 
 require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class' .EXT;
@@ -130,7 +130,7 @@ class Mailchimp_model extends CI_Model {
 	public function __construct()
 	{
 		$this->_extension_class = 'Mailchimp_subscribe_ext';
-		$this->_version			= '2.0.0';
+		$this->_version			= '2.0.1';
 		
 		$this->_ee 		=& get_instance();
 		$this->_site_id = $this->_ee->config->item('site_id');
@@ -1040,6 +1040,19 @@ class Mailchimp_model extends CI_Model {
 			if ($groupings)
 			{
 				$merge_vars['GROUPINGS'] = $groupings;
+			}
+			
+			/**
+			 * @since 	2.0.1
+			 * @see		http://www.mailchimp.com/api/rtfm/listsubscribe.func.php
+			 *
+			 * Passing a blank $merge_vars array will fail. We should either pass an empty string,
+			 * or array('').
+			 */
+			
+			if ( ! $merge_vars)
+			{
+				$merge_vars = '';
 			}
 			
 			// Finally we can make the API call.
