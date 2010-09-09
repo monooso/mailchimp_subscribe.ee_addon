@@ -890,10 +890,31 @@ class Mailchimp_model extends CI_Model {
 		{
 			foreach ($db_member_fields->result() AS $row)
 			{
+				if ($row->m_field_type == 'select')
+				{
+					/**
+					 * Given the number of PHP array manipulation methods, I suspect
+					 * there may be a more elegant way of achieving this goal. This
+					 * will do for now though.
+					 */
+					
+					$options = array();
+					$raw_options = explode("\n", $row->m_field_list_items);
+					
+					foreach ($raw_options AS $key => $value)
+					{
+						$options[$value] = $value;
+					}
+				}
+				else
+				{
+					$options = array();
+				}
+				
 				$member_fields['m_field_id_' .$row->m_field_id] = array(
 					'id'		=> 'm_field_id_' .$row->m_field_id,
 					'label'		=> $row->m_field_label,
-					'options'	=> $row->m_field_type == 'select' ? explode("\n", $row->m_field_list_items) : array(),
+					'options'	=> $options,
 					'type'		=> $row->m_field_type == 'select' ? 'select' : 'text'
 				);
 			}
