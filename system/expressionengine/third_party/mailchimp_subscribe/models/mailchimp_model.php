@@ -6,7 +6,7 @@
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.1
+ * @version		2.0.2
  */
 
 require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class' .EXT;
@@ -130,7 +130,7 @@ class Mailchimp_model extends CI_Model {
 	public function __construct()
 	{
 		$this->_extension_class = 'Mailchimp_subscribe_ext';
-		$this->_version			= '2.0.1';
+		$this->_version			= '2.0.2';
 		
 		$this->_ee 		=& get_instance();
 		$this->_site_id = $this->_ee->config->item('site_id');
