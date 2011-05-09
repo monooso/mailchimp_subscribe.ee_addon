@@ -1,0 +1,31 @@
+/**
+ * ----------------------------------------------
+ * Reset
+ * ----------------------------------------------
+ */
+
+#sjl div, #sjl span, #sjl object,
+#sjl iframe, #sjl h1, #sjl h2, #sjl h3,
+#sjl p, #sjl pre, #sjl a, #sjl abbr,
+#sjl acronym, #sjl address, #sjl code,
+#sjl em, #sjl img, #sjl small, #sjl strike,
+#sjl strong, #sjl sub, #sjl sup,
+#sjl dl, #sjl dt, #sjl dd,
+#sjl ol, #sjl ul, #sjl li,
+#sjl fieldset, #sjl form, #sjl label, #sjl legend,
+#sjl table, #sjl caption, #sjl tbody, #sjl tfoot, #sjl thead, #sjl tr, #sjl th, #sjl td {
+margin : 0;
+padding : 0;
+border : 0;
+outline : 0;
+font-size : 100%;
+vertical-align : baseline;
+background : transparent;
+}
+
+:focus {outline : 1px solid #EBEA47;}
+/* tables still need 'cellspacing="0"' in the markup */
+table {
+border-collapse : collapse;
+border-spacing : 0;
+}

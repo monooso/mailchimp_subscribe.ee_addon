@@ -1,0 +1,408 @@
+#sjl {
+background : #FFF;
+color : #111;
+font : normal 12px/20px "Helvetica Neue", Arial, Helvetica, sans-serif;
+}
+
+
+/* =headings
+ -------------------------------------------------------------*/
+#sjl h1,
+#sjl h2,
+#sjl h3 {
+color : #000;
+font-weight : bold;
+padding : 0 6px;
+}
+
+#sjl h1 {
+font-size : 18px;
+padding-left : 90px;
+position : relative;
+}
+
+#sjl h1 em {
+color : #666;
+font-size : 11px;
+font-style : normal;
+font-weight : normal;
+}
+
+#sjl h1 img {
+bottom : -6px;
+left : 2px;
+position : absolute;
+}
+
+#sjl h2 {
+font-size : 14px;
+margin-bottom : 5px;
+}
+
+#sjl h3 {
+font-size : 13px;
+margin : 25px 0 5px;
+}
+
+/* Form headings */
+#sjl form h2,
+#sjl form h3 {
+background-image : -webkit-gradient(linear, left bottom, left top, from(rgba(0, 0, 0, 0.15)), to(rgba(0, 0, 0, 0)));
+background-image : -moz-linear-gradient(bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+color : #FFF;
+margin : 0;
+padding : 9px;
+text-shadow : 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+#sjl form h2 {
+background-color : #768E9D;
+border : 1px solid #CCC;
+border-bottom-color : #52636E;
+}
+
+#sjl form h3 {
+background-color : #8F9295;
+border-bottom : 1px solid #777A7C;
+padding-bottom : 7px;
+padding-top : 7px;
+}
+
+
+/* =paragraphs
+ -------------------------------------------------------------*/
+#sjl p {
+margin-bottom : 10px;
+padding : 0 6px;
+}
+
+
+/* =lists
+ -------------------------------------------------------------*/
+#sjl ul,
+#sjl ol {margin : 20px 0 20px 2em;}
+
+#sjl ul {list-style : disc outside;}
+
+#sjl ol {list-style : decimal outside;}
+
+#sjl li {margin-bottom : 10px;}
+
+
+/* =anchors
+ -------------------------------------------------------------*/
+#sjl a:hover {text-decoration : underline;}
+
+
+/* =tables
+ -------------------------------------------------------------*/
+#sjl table {
+border-left : 1px solid #CCC;
+border-right : 1px solid #CCC;
+border-collapse : collapse;
+width : 100%;
+}
+
+#sjl th,
+#sjl td {
+border-bottom : 1px solid #CCC;
+padding : 7px 19px 7px 9px;
+text-align : left;
+vertical-align : top;
+}
+
+#sjl thead th {
+background-color : #BEC3C7;
+background-image : -webkit-gradient(linear, left bottom, left top, from(rgba(0, 0, 0, 0.15)), to(rgba(0, 0, 0, 0)));
+background-image : -moz-linear-gradient(bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+border-top : 1px solid #CCC;
+color : #000;
+cursor : pointer;
+padding-right : 9px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+#sjl tbody th {width : 35%;}
+
+#sjl .odd th,
+#sjl .odd td {background : #EEF4F9;}
+
+/* Nested tables */
+#sjl .nested {padding : 0 9px;}
+
+#sjl .nested table {border : none;}
+
+#sjl .nested th,
+#sjl .nested td {
+border-style : dotted;
+padding-left : 0;
+padding-right : 0;
+}
+
+#sjl .nested table > tbody > tr:last-child th,
+#sjl .nested table > tbody > tr:last-child td {border-bottom : none;}
+
+
+/* =forms
+ -------------------------------------------------------------*/
+#sjl form {
+font-size : 12px;
+line-height : 20px;
+}
+
+#sjl fieldset {margin-bottom : 20px;}
+
+#sjl fieldset.submit {
+margin-top : -20px;
+padding : 14px 6px;
+}
+ 
+#sjl label {
+font-weight : bold;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 1.0);
+}
+
+#sjl label span {
+color : #666;
+display : block;
+font-size : 11px;
+font-weight : normal;
+text-shadow : none;
+}
+
+#sjl td label {font-weight : normal;}
+
+#sjl input[type="text"],
+#sjl textarea {width : 95%;}
+
+#sjl textarea {height : 13.636em;		/* 150px */}
+
+#sjl .hint,
+#sjl .error {margin-bottom : 0;}
+
+#sjl .hint {color : #666;}
+
+#sjl .error {
+background : transparent url(../img/icon-alert.png) no-repeat 0 50%;
+color : #D44211;
+font-weight : bold;
+padding-left : 22px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 1.0);
+}
+
+
+/* =button
+ -------------------------------------------------------------*/
+#sjl span.button {
+-moz-border-radius : 4px;
+-moz-box-shadow : 0 -1px 2px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(255, 255, 255, 1.0);
+-webkit-border-radius : 4px;
+-webkit-box-shadow : 0 -1px 2px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(255, 255, 255, 1.0);
+
+background : rgb(210, 215, 220);
+background-image : -webkit-gradient(linear, 0 0, 0 100%, from(rgba(0, 0, 0, 0)), to(rgba(0, 0, 0, 0.1)));
+background-image : -moz-linear-gradient(top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1));
+border : 1px solid rgb(190, 195, 200);
+border-bottom-color : rgb(170, 175, 180);
+border-top-color : rgb(225, 230, 235);
+border-radius : 4px;
+box-shadow : 0 -1px 2px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(255, 255, 255, 1.0);
+color : rgb(50, 55, 60);
+cursor : pointer;
+display : inline-block;
+font-size : 11px;
+font-weight : bold;
+padding : 2px 6px 3px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.85);
+text-transform : uppercase;
+}
+
+#sjl span.button:hover {
+background-image : -webkit-gradient(linear, 0 0, 0 100%, from(rgba(0, 0, 0, 0)), to(rgba(0, 0, 0, 0.15)));
+background-image : -moz-linear-gradient(top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.15));
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+#sjl span.button:focus {outline : 1px dotted rgb(204, 204, 204);}
+
+#sjl span.ajax.button {display : none;}
+
+#sjl.enhanced span.ajax.button {display : inline-block;}
+
+
+/* =info
+ -------------------------------------------------------------*/
+#sjl .info {
+background : #FCFCDE;
+border : 3px solid #E5E5E5;
+font-size : 14px;
+font-weight : bold;
+margin : 0 22px 20px;
+padding : 14px 9px 4px;
+}
+
+#sjl fieldset .info {
+border : 1px solid #CCC;
+border-top : none;
+font-size : 12px;
+font-weight : normal;
+margin : 0;
+padding : 9px 3px 1px;
+}
+
+
+/* =clearfix
+ ----------------------------------------------*/
+#sjl .clearfix:after {
+clear : both;
+display : block;
+height : 0;
+visibility : hidden;
+content : ".";
+}
+
+
+/* =figures
+ ----------------------------------------------*/
+#sjl .figure {
+background : #DDD;
+display : block;
+padding : 5px;
+}
+
+#sjl .figure.inset {
+float : left;
+margin-right : 10px;
+}
+
+#sjl .figure.inset.alternative {
+float : right;
+margin-left : 10px;
+}
+
+#sjl .figure img {
+border : 1px solid #FFF;
+display : block;
+}
+
+
+/* =masthead
+ -------------------------------------------------------------*/
+#sjl #masthead {
+border-bottom : 1px solid #EEE;
+margin : 0 0 15px 0;
+padding : 12px 0 6px;
+width : 100%;
+}
+
+#sjl #masthead h1 {float : left;}
+
+/* Navigation */
+#sjl #masthead ul {
+float : right;
+list-style : none;
+margin : 0;
+}
+
+#sjl #masthead li {
+float : left;
+margin-bottom : 0;
+margin-right : 10px;
+}
+
+#sjl #masthead ul a {
+border-top : 1px solid #FFF;
+color : #666;
+display : block;
+font-size : 12px;
+font-weight : bold;
+line-height : 1.0;
+-moz-border-radius : 10px;
+padding : 0.333em 10px;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 1.0);
+-webkit-border-radius : 10px;
+}
+
+#sjl #masthead ul a:hover {
+color : #222;
+text-decoration : none;
+}
+
+#sjl #masthead ul .active a {
+background : #E9E9E9;
+border-top-color : rgba(0, 0, 0, 0.15);
+color : #000;
+}
+
+/* Donate button */
+#sjl #masthead div {
+background : #EBE350 url(../img/bg-donate.png) no-repeat 0 50%;
+border : 1px solid #EED5C6;
+border-bottom-color : #DCAC8D;
+border-top-color : #FFF;
+float : right;
+margin-left : 20px;
+margin-top : -0.455em;		/* 5px */
+-moz-border-radius : 6px;
+-moz-box-shadow : 0 1px 3px rgba(0, 0, 0, 0.25);
+-webkit-border-radius : 6px;
+-webkit-box-shadow : 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+#sjl #masthead div a {
+color : #000;
+display : block;
+font-weight : bold;
+line-height : 1.5;
+-moz-border-radius : 5px;
+padding : 6px 9px 6px 75px;
+text-decoration : none;
+text-shadow : 0 1px 0 rgba(255, 255, 255, 0.75);
+-webkit-border-radius : 6px;
+}
+
+
+/* =about
+ -------------------------------------------------------------*/
+#sjl #about .col {
+float : left;
+margin-left : 30px;
+width : 45%;
+}
+
+#sjl #about .col:first-child {margin-left : 0;}
+
+#sjl #about .col:first-child h2,
+#sjl #about .col:first-child p {margin-left : 97px;}
+
+
+/* =content-block
+ -------------------------------------------------------------*/
+#sjl.enhanced .content-block {display : none;}
+
+#sjl.enhanced #settings {display : block;}
+
+
+/* =loading
+ -------------------------------------------------------------*/
+#sjl #loading {
+background : rgb(0, 0, 0);
+display : none;
+opacity : 0.9;
+position : absolute;
+}
+
+#sjl #loading p {
+background : rgb(0, 0, 0);
+border : 2px solid rgb(51, 51, 51);
+height : 32px;
+left : 50%;
+margin : -68px 0 0 -68px;
+padding : 50px;
+position : absolute;
+top : 50%;
+width : 32px;
+-moz-border-radius : 10px;
+-webkit-border-radius : 10px;
+border-radius : 10px;
+}
