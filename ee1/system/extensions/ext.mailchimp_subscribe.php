@@ -4,7 +4,7 @@
  * Effortlessly subscribe members of your ExpressionEngine site to one or more MailChimp mailing lists.
  *
  * @package		MailChimp Subscribe
- * @version 	2.0.2
+ * @version 	2.0.3
  * @author 		Stephen Lewis <stephen@experienceinternet.co.uk>
  * @copyright 	Copyright (c) 2008-2010, Stephen Lewis
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
@@ -12,57 +12,12 @@
 
 class Mailchimp_subscribe {
 	
-	/* --------------------------------------------------------------
-	 * PUBLIC PROPERTIES
-	 * ------------------------------------------------------------ */
-	
-	/**
-	 * The extension name.
-	 *
-	 * @access	public
-	 * @var 	string
-	 */
-	public $name = 'MailChimp Subscribe';
-	
-	/**
-	 * Extension description.
-	 *
-	 * @access	public
-	 * @var 	string
-	 */
+	public $name        = 'MailChimp Subscribe';
 	public $description = 'Effortlessly subscribe members of your ExpressionEngine site to one or more MailChimp mailing lists.';
-	
-	/**
-	 * Extension documentation URL.
-	 *
-	 * @access	public
-	 * @var 	string
-	 */
-	public $docs_url = 'http://experienceinternet.co.uk/software/mailchimp-subscribe/';
-	
-	/**
-	 * Extension settings.
-	 *
-	 * @access	public
-	 * @var 	array
-	 */
-	public $settings = array();
-	
-	/**
-	 * Does the extension have a control panel?
-	 *
-	 * @access	public
-	 * @var 	string
-	 */
+	public $docs_url    = 'http://experienceinternet.co.uk/software/mailchimp-subscribe/';
+	public $settings    = array();
 	public $settings_exist = 'y';
-	
-	/**
-	 * The extension version.
-	 *
-	 * @access	public
-	 * @var 	string
-	 */
-	public $version = '2.0.2';
+	public $version     = '2.0.3';
 	
 	
 	/* --------------------------------------------------------------
@@ -70,94 +25,17 @@ class Mailchimp_subscribe {
 	 * Initialised in the constructor.
 	 * ------------------------------------------------------------ */
 	
-	/**
-	 * Class name. Saves running get_class($this) every time.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_class_name = '';
-	
-	/**
-	 * Class name, converted to lowercase.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_lower_class_name = '';
-	
-	/**
-	 * The site ID.
-	 *
-	 * @access	private
-	 * @param 	string
-	 */
-	private $_site_id = '';
-	
-	/**
-	 * The default and custom member fields.
-	 *
-	 * @access	private
-	 * @var 	array
-	 */
-	private $_member_fields = array();
-	
-	/**
-	 * MailChimp account details.
-	 *
-	 * @access	private
-	 * @var 	array
-	 */
-	private $_account_details = array();
-	
-	/**
-	 * A list of all the available mailing lists. Stored separately from the
-	 * settings, as we don't want to save it to the database.
-	 *
-	 * @access	private
-	 * @var 	array
-	 */
+	private $_class_name        = '';
+	private $_lower_class_name  = '';
+	private $_site_id           = '';
+	private $_member_fields     = array();
+	private $_account_details   = array();
 	private $_all_mailing_lists = array();
-	
-	/**
-	 * Error messages to display.
-	 *
-	 * @access	private
-	 * @var 	array
-	 */
-	private $_errors = array();
-	
-	/**
-	 * The base for all extension URLs.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_base_url = '';
-	
-	/**
-	 * The path to the themes folder.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_themes_path = '';
-	
-	/**
-	 * The URL to the themes folder.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_themes_url = '';
-	
-	/**
-	 * A direct link to the hotline of help.
-	 *
-	 * @access	private
-	 * @var 	string
-	 */
-	private $_support_url = 'http://support.experienceinternet.co.uk/discussions/mailchimp-subscribe/';
+	private $_errors            = array();
+	private $_base_url          = '';
+	private $_themes_path       = '';
+	private $_themes_url        = '';
+	private $_support_url       = 'http://support.experienceinternet.co.uk/discussions/mailchimp-subscribe/';
 	
 	
 	
