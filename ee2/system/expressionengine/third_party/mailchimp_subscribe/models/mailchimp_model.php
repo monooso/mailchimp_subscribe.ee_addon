@@ -6,7 +6,7 @@
  * @author		Stephen Lewis <addons@experienceinternet.co.uk>
  * @link 		http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package		MailChimp Subscribe
- * @version		2.0.2
+ * @version		2.0.3
  */
 
 require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class' .EXT;
@@ -24,96 +24,17 @@ class Mailchimp_model extends CI_Model {
 	 * PRIVATE PROPERTIES
 	 * ------------------------------------------------------------ */
 	
-	/**
-	 * The API user account.
-	 *
-	 * @access	private
-	 * @var		MCS_Api_account
-	 */
-	private $_api_account = NULL;
-	
-	/**
-	 * The API connector.
-	 *
-	 * @access	private
-	 * @var		object
-	 */
-	private $_connector = NULL;
-	
-	/**
-	 * ExpressionEngine object.
-	 *
-	 * @access	private
-	 * @var		object
-	 */
+	private $_api_account       = NULL;
+	private $_connector         = NULL;
 	private $_ee;
-	
-	/**
-	 * The extension class name.
-	 *
-	 * @access	private
-	 * @var		string
-	 */
-	private $_extension_class = '';
-	
-	/**
-	 * The extension version.
-	 *
-	 * @access	private
-	 * @var		string
-	 */
-	private $_version = '';
-	
-	/**
-	 * Mailing lists.
-	 *
-	 * @access	private
-	 * @var		array
-	 */
-	private $_mailing_lists = array();
-	
-	
-	/**
-	 * Member fields.
-	 *
-	 * @access	private
-	 * @var		array
-	 */
-	private $_member_fields = array();
-	
-	/**
-	 * The extension settings.
-	 *
-	 * @access	private
-	 * @var		MCS_Settings
-	 */
-	private $_settings = NULL;
-	
-	/**
-	 * The site ID.
-	 *
-	 * @access	private
-	 * @var		string
-	 */
-	private $_site_id = '1';
-	
-	/**
-	 * The `theme` folder URL for this add-on.
-	 *
-	 * @access	private
-	 * @var		string
-	 */
-	private $_theme_folder_url = '';
-	
-	/**
-	 * The 'view' settings. That is, the saved settings, plus any additional
-	 * mailing lists, all wrapped up in a neat little MCS_Settings object, for
-	 * use in the view.
-	 *
-	 * @access	private
-	 * @var		MCS_Settings
-	 */
-	private $_view_settings = NULL;
+	private $_extension_class   = '';
+	private $_version           = '';
+	private $_mailing_lists     = array();
+	private $_member_fields     = array();
+	private $_settings          = NULL;
+	private $_site_id           = '1';
+	private $_theme_folder_url  = '';
+	private $_view_settings     = NULL;
 	
 	
 	
@@ -130,7 +51,7 @@ class Mailchimp_model extends CI_Model {
 	public function __construct()
 	{
 		$this->_extension_class = 'Mailchimp_subscribe_ext';
-		$this->_version			= '2.0.2';
+		$this->_version			= '2.0.3';
 		
 		$this->_ee 		=& get_instance();
 		$this->_site_id = $this->_ee->config->item('site_id');
