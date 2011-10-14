@@ -36,7 +36,30 @@ class Mailchimp_model extends CI_Model {
     private $_theme_folder_url  = '';
     private $_view_settings     = NULL;
     
-    
+
+    /**
+     * Zoo Visitors installed?
+     *
+     * @access private
+     * @var boolean
+     */
+    private $_zoo_visitor_installed = FALSE;
+
+    /**
+     * Zoo Visitors settings
+     *
+     * @access private
+     * @var array
+     */
+    private $_zoo_visitor_settings = array();
+
+    /**
+     * Zoo Visitors fields
+     *
+     * @access private
+     * @var array
+     */
+    private $_zoo_visitor_member_fields = array();
     
     /* --------------------------------------------------------------
      * PUBLIC METHODS
@@ -68,6 +91,9 @@ class Mailchimp_model extends CI_Model {
         
         // Load the settings.
         $this->_load_settings_from_db();
+
+        // Init Zoo Visitor
+        $this->_zoo_visitor_installed = $this->_init_zoo_visitor();
         
         // Load the member fields from the database.
         $this->_load_member_fields_from_db();
@@ -111,6 +137,16 @@ class Mailchimp_model extends CI_Model {
             array(
                 'hook'      => 'user_register_end',
                 'method'    => 'user_register_end',
+                'priority'  => 10
+            ),
+            array(
+                'hook'      => 'zoo_visitor_register',
+                'method'    => 'zoo_visitor_register',
+                'priority'  => 10
+            ),
+            array(
+                'hook'      => 'zoo_visitor_update_end',
+                'method'    => 'zoo_visitor_update_end',
                 'priority'  => 10
             )
         );
@@ -286,6 +322,24 @@ class Mailchimp_model extends CI_Model {
             is_array($val)
                 ? $this->_ee->db->where_in('members.' .$key, $val)
                 : $this->_ee->db->where('members.' .$key, $val);
+        }
+
+        // If Zoo Visitor is installed, get fields of the channel
+        if ($this->_zoo_visitor_installed === TRUE) {
+            
+            $field_ids = array();
+            foreach($this->_zoo_visitor_member_fields as $zoo_field) {
+                if ($zoo_field->field_type !== 'zoo_visitor') { // We skip the ZV fieldtype
+                    $field_ids[] = 'exp_channel_data.field_id_'.$zoo_field->field_id;   
+                }
+            }
+            $fields = implode(',', $field_ids);
+            $this->_ee->db->select('members.*,'.$fields);
+
+            $this->_ee->db->join('channel_titles','exp_members.member_id = exp_channel_titles.author_id', 'inner');
+            $this->_ee->db->join('exp_channel_data','exp_channel_titles.entry_id = exp_channel_data.entry_id', 'inner');
+            $this->_ee->db->where('exp_channel_titles.channel_id', $this->_zoo_visitor_settings['member_channel_id']);
+
         }
         
         $this->_ee->db->join('member_data', 'member_data.member_id = members.member_id', 'inner');
@@ -759,6 +813,68 @@ class Mailchimp_model extends CI_Model {
         
         $this->_mailing_lists = $lists;
     }
+
+    /**
+     * Check if Zoo Visitor is installed
+     * and get its settings if it's the case
+     *
+     * @access private
+     * return void
+     */ 
+    private function _init_zoo_visitor()
+    {
+        // Check if Zoo Visitor is installed
+        $this->_ee->load->model('addons_model');
+        if ($this->_ee->addons_model->module_installed('Zoo_visitor')) {
+            
+            // Ok Zoo Visitor is installed, so let's get its settings
+            $stmt = $this->_ee->db->select('var, var_value')
+                                ->from('zoo_visitor_settings')
+                                ->where(array('site_id'=>$this->_ee->config->item('site_id')));
+            $zoo_settings_query = $stmt->get();
+            
+            if ($zoo_settings_query->num_rows() > 0) {
+            
+                foreach($zoo_settings_query->result() as $setting) {
+            
+                    $this->_zoo_visitor_settings[$setting->var] = $setting->var_value;
+            
+                }
+
+                // Ensure that settings are correct
+                if (isset($this->_zoo_visitor_settings['member_channel_id'])) {
+                    
+                    $this->_ee->load->model('channel_model');
+                    $zoo_channel = $this->_ee->channel_model->get_channel_info($this->_zoo_visitor_settings['member_channel_id']);
+                    
+                    if ($zoo_channel->num_rows() > 0) {
+                    
+                        $row = $zoo_channel->row();
+                        $field_group = $row->field_group;
+                        // Get the fields
+                        $zoo_fields = $this->_ee->channel_model->get_channel_fields($field_group);
+                    
+                        if ($zoo_fields->num_rows() > 0) {
+                            
+                            $this->_zoo_visitor_member_fields = $zoo_fields->result();
+                            return TRUE;
+
+                        }
+                    }
+
+                } else {
+                    return FALSE;
+                }
+            
+            } else {
+                return FALSE;
+            }
+        
+        } else {
+            return FALSE;
+        }
+
+    }
     
     
     /**
@@ -802,45 +918,66 @@ class Mailchimp_model extends CI_Model {
                 'type'      => 'text'
             )
         );
-        
-        // Load the custom member fields.
-        $db_member_fields = $this->_ee->db->select('m_field_id, m_field_label, m_field_type, m_field_list_items')->get('member_fields');
-        
-        if ($db_member_fields->num_rows() > 0)
-        {
-            foreach ($db_member_fields->result() AS $row)
-            {
-                if ($row->m_field_type == 'select')
-                {
-                    /**
-                     * Given the number of PHP array manipulation methods, I suspect
-                     * there may be a more elegant way of achieving this goal. This
-                     * will do for now though.
-                     */
-                    
-                    $options = array();
-                    $raw_options = explode("\n", $row->m_field_list_items);
-                    
-                    foreach ($raw_options AS $key => $value)
-                    {
-                        $options[$value] = $value;
-                    }
-                }
-                else
-                {
-                    $options = array();
-                }
+
+        // Check if Zoo Visitor is installed and initialized
+        if ($this->_zoo_visitor_installed === TRUE) {
+            
+            foreach($this->_zoo_visitor_member_fields as $zoo_field) {
                 
-                $member_fields['m_field_id_' .$row->m_field_id] = array(
-                    'id'        => 'm_field_id_' .$row->m_field_id,
-                    'label'     => $row->m_field_label,
-                    'options'   => $options,
-                    'type'      => $row->m_field_type == 'select' ? 'select' : 'text'
-                );
+                //Skip zoo_visitor field, which is not used
+                if ($zoo_field->field_type !== 'zoo_visitor') {
+        
+                    $member_fields['field_id_'.$zoo_field->field_id] = array(
+                    'id'        => 'field_id_'.$zoo_field->field_id,
+                    'label'     => $zoo_field->field_label,
+                    'options'   => array(),
+                    'type'      => $zoo_field->field_type
+                    );
+        
+                }
+            }
+
+        } else { //If Zoo Visitor is not installed, we use the normal way...
+        
+            // Load the custom member fields.
+            $db_member_fields = $this->_ee->db->select('m_field_id, m_field_label, m_field_type, m_field_list_items')->get('member_fields');
+            
+            if ($db_member_fields->num_rows() > 0)
+            {
+                foreach ($db_member_fields->result() AS $row)
+                {
+                    if ($row->m_field_type == 'select')
+                    {
+                        /**
+                         * Given the number of PHP array manipulation methods, I suspect
+                         * there may be a more elegant way of achieving this goal. This
+                         * will do for now though.
+                         */
+                        
+                        $options = array();
+                        $raw_options = explode("\n", $row->m_field_list_items);
+                        
+                        foreach ($raw_options AS $key => $value)
+                        {
+                            $options[$value] = $value;
+                        }
+                    }
+                    else
+                    {
+                        $options = array();
+                    }
+                    
+                    $member_fields['m_field_id_' .$row->m_field_id] = array(
+                        'id'        => 'm_field_id_' .$row->m_field_id,
+                        'label'     => $row->m_field_label,
+                        'options'   => $options,
+                        'type'      => $row->m_field_type == 'select' ? 'select' : 'text'
+                    );
+                }
             }
         }
-        
-        $this->_member_fields = $member_fields;
+            
+            $this->_member_fields = $member_fields;
     }
     
     

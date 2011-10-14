@@ -327,7 +327,22 @@ class Mailchimp_subscribe_ext {
 		return $userdata;
 	}
 	
-	
+	public function zoo_visitor_register($userdata = NULL, $member_id = '')
+	{
+		if ($member_id && strtolower($this->_ee->config->item('req_mbr_activation')) === 'none')
+		{
+			$this->_ee->mailchimp_model->subscribe_member($member_id);
+		}
+
+		return $userdata;
+	}
+
+	public function zoo_visitor_update_end($member_data = array(), $member_id = '')
+	{
+		$this->_ee->mailchimp_model->update_member_subscriptions($member_id);
+
+		return TRUE;
+	}
 	
 	/* --------------------------------------------------------------
 	 * PRIVATE METHODS
