@@ -931,14 +931,29 @@ class Mailchimp_model extends CI_Model {
 
 			foreach($this->_zoo_visitor_member_fields as $zoo_field) {
 
+				if ($zoo_field->field_type == 'select')
+				{
+					$options = array();
+					$raw_options = explode("\n", $zoo_field->field_list_items);
+
+					foreach ($raw_options AS $key => $value)
+					{
+						$options[$value] = $value;
+					}
+				}
+				else
+				{
+					$options = array();
+				}
+
 				//Skip zoo_visitor field, which is not used
 				if ($zoo_field->field_type !== 'zoo_visitor') {
 
 					$member_fields['field_id_'.$zoo_field->field_id] = array(
 					'id'		=> 'field_id_'.$zoo_field->field_id,
 					'label'	 => $zoo_field->field_label,
-					'options'   => array(),
-					'type'	  => $zoo_field->field_type
+					'options'   => $options,
+					'type'	  => $zoo_field->field_type == 'select' ? 'select' : 'text'
 					);
 
 				}
