@@ -166,20 +166,7 @@ class Mailchimp_model extends CI_Model {
       )
     );
 
-    foreach ($hooks AS $hook)
-    {
-      $this->_ee->db->insert(
-        'extensions',
-        array(
-          'class'     => $this->_extension_class,
-          'enabled'   => 'y',
-          'hook'      => $hook['hook'],
-          'method'    => $hook['method'],
-          'priority'  => $hook['priority'],
-          'version'   => $this->_version
-        )
-      );
-    }
+    $this->_register_hooks($hooks);
 
     // Create the settings table.
     $fields = array(
@@ -598,6 +585,35 @@ class Mailchimp_model extends CI_Model {
     )
     {
       return FALSE;
+    }
+
+    // Update to version 2.1.0.
+    if (version_compare($current_version, '2.1.0', '<'))
+    {
+      $hooks = array(
+        array(
+          'hook'      => 'zoo_visitor_cp_register_end',
+          'method'    => 'zoo_visitor_cp_register_end',
+          'priority'  => 10
+        ),
+        array(
+          'hook'      => 'zoo_visitor_cp_update_end',
+          'method'    => 'zoo_visitor_cp_update_end',
+          'priority'  => 10
+        ),
+        array(
+          'hook'      => 'zoo_visitor_register_end',
+          'method'    => 'zoo_visitor_register_end',
+          'priority'  => 10
+        ),
+        array(
+          'hook'      => 'zoo_visitor_update_end',
+          'method'    => 'zoo_visitor_update_end',
+          'priority'  => 10
+        )
+      );
+
+      $this->_register_hooks($hooks);
     }
 
     // Update the version number.
@@ -1045,6 +1061,32 @@ class Mailchimp_model extends CI_Model {
     }
 
     $this->_member_fields = $member_fields;
+  }
+
+
+  /**
+   * Registers the supplied hooks.
+   *
+   * @access  private
+   * @param   array    $hooks    The hooks to register.
+   * @return  void
+   */
+  private function _register_hooks(Array $hooks = array())
+  {
+    foreach ($hooks AS $hook)
+    {
+      $this->_ee->db->insert(
+        'extensions',
+        array(
+          'class'     => $this->_extension_class,
+          'enabled'   => 'y',
+          'hook'      => $hook['hook'],
+          'method'    => $hook['method'],
+          'priority'  => $hook['priority'],
+          'version'   => $this->_version
+        )
+      );
+    }
   }
 
 
