@@ -81,6 +81,8 @@ class Mailchimp_model extends CI_Model {
    */
   public function __construct()
   {
+    parent::__construct();
+
     $this->_extension_class = 'Mailchimp_subscribe_ext';
     $this->_version    = '2.0.4';
     $this->_ee        =& get_instance();
@@ -102,6 +104,12 @@ class Mailchimp_model extends CI_Model {
     $this->_load_settings_from_db();
     $this->_zoo_visitor_installed = $this->_init_zoo_visitor();
     $this->_load_member_fields_from_db();
+
+    // OmniLog FTW!
+    if (file_exists(PATH_THIRD .'omnilog/classes/omnilogger.php'))
+    {
+      include_once PATH_THIRD .'omnilog/classes/omnilogger.php';
+    }
   }
 
 
@@ -186,45 +194,6 @@ class Mailchimp_model extends CI_Model {
     $this->_ee->dbforge->add_field($fields);
     $this->_ee->dbforge->add_key('site_id', TRUE);
     $this->_ee->dbforge->create_table('mailchimp_subscribe_settings', TRUE);
-
-    // Create the 'error log' table.
-    $fields = array(
-      'error_log_id' => array(
-        'auto_increment'  => TRUE,
-        'constraint'      => 10,
-        'null'            => FALSE,
-        'type'            => 'int',
-        'unsigned'        => TRUE
-      ),
-      'site_id' => array(
-        'constraint'  => 5,
-        'default'     => 1,
-        'null'        => FALSE,
-        'type'        => 'int',
-        'unsigned'    => TRUE
-      ),
-      'error_date' => array(
-        'constraint'  => 10,
-        'null'        => FALSE,
-        'type'        => 'int',
-        'unsigned'    => TRUE
-      ),
-      'error_code' => array(
-        'constraint'  => 10,
-        'null'        => TRUE,
-        'type'        => 'varchar'
-      ),
-      'error_message' => array(
-        'constraint'  => 255,
-        'null'        => TRUE,
-        'type'        => 'varchar'
-      )
-    );
-
-    $this->_ee->dbforge->add_field($fields);
-    $this->_ee->dbforge->add_key('error_log_id', TRUE);
-    $this->_ee->dbforge->add_key('site_id', FALSE);
-    $this->_ee->dbforge->create_table('mailchimp_subscribe_error_log', TRUE);
   }
 
 
@@ -239,9 +208,8 @@ class Mailchimp_model extends CI_Model {
     $this->_ee->db->delete('extensions',
       array('class' => $this->_extension_class));
 
-    $this->load->dbforge();
+    $this->_ee->load->dbforge();
     $this->_ee->dbforge->drop_table('mailchimp_subscribe_settings');
-    $this->_ee->dbforge->drop_table('mailchimp_subscribe_error_log');
   }
 
 
@@ -261,28 +229,12 @@ class Mailchimp_model extends CI_Model {
       }
       catch (MCS_exception $exception)
       {
-        $this->log_error($exception->getMessage(), $exception->getCode());
+        $this->log_error(
+          "{$exception->getMessage()} (error code: {$exception->getCode()}", 3);
       }
     }
 
     return $this->_api_account;
-  }
-
-
-  /**
-   * Returns the error log.
-   *
-   * @access  public
-   * @return  array
-   */
-  public function get_error_log()
-  {
-    $db_error_log = $this->_ee->db
-      ->order_by('error_log_id', 'desc')
-      ->get_where('mailchimp_subscribe_error_log',
-          array('site_id' => $this->_site_id));
-
-    return $db_error_log->result_array();
   }
 
 
@@ -302,7 +254,8 @@ class Mailchimp_model extends CI_Model {
       }
       catch (MCS_exception $exception)
       {
-        $this->log_error($exception->getMessage(), $exception->getCode());
+        $this->log_error(
+          "{$exception->getMessage()} (error code: {$exception->getCode()}", 3);
       }
     }
 
@@ -516,21 +469,49 @@ class Mailchimp_model extends CI_Model {
    * Logs an error to the database.
    *
    * @access  public
-   * @param   string    $message  The error message.
-   * @param   string    $code    The error code.
+   * @param   string    $message        The log entry message.
+   * @param   int       $severity       The log entry 'level.'
+   * @param   array     $emails         Array of 'admin' emails.
+   * @param   string    $extended_data  Additional data.
    * @return  void
    */
-  public function log_error($message = '', $code = '')
+  public function log_error($message, $severity = 1, Array $emails = array(),
+    $extended_data = ''
+  )
   {
-    $this->_ee->db->insert(
-      'mailchimp_subscribe_error_log',
-      array(
-        'site_id'    => $this->_site_id,
-        'error_date'  => time(),
-        'error_code'  => $code,
-        'error_message' => $message
-      )
-    );
+    if (class_exists('Omnilog_entry') && class_exists('Omnilogger'))
+    {
+      switch ($severity)
+      {
+        case 3:
+          $notify = TRUE;
+          $type   = Omnilog_entry::ERROR;
+          break;
+
+        case 2:
+          $notify = FALSE;
+          $type   = Omnilog_entry::WARNING;
+          break;
+
+        case 1:
+        default:
+          $notify = FALSE;
+          $type   = Omnilog_entry::NOTICE;
+          break;
+      }
+
+      $omnilog_entry = new Omnilog_entry(array(
+        'addon_name'    => 'MailChimp Subscribe',
+        'admin_emails'  => $emails,
+        'date'          => time(),
+        'extended_data' => $extended_data,
+        'message'       => $message,
+        'notify_admin'  => $notify,
+        'type'          => $type
+      ));
+
+      Omnilogger::log($omnilog_entry);
+    }
   }
 
 
@@ -566,7 +547,8 @@ class Mailchimp_model extends CI_Model {
     }
     catch (MCS_Exception $exception)
     {
-      $this->log_error($exception->getMessage(), $exception->getCode());
+      $this->log_error(
+        "{$exception->getMessage()} (error code: {$exception->getCode()}", 3);
     }
   }
 
@@ -590,6 +572,7 @@ class Mailchimp_model extends CI_Model {
     // Update to version 2.1.0.
     if (version_compare($current_version, '2.1.0', '<'))
     {
+      // Register the Zoo Visitor hook handlers.
       $hooks = array(
         array(
           'hook'      => 'zoo_visitor_cp_register_end',
@@ -614,6 +597,10 @@ class Mailchimp_model extends CI_Model {
       );
 
       $this->_register_hooks($hooks);
+
+      // Drop the MailChimp Subscribe error log table.
+      $this->_ee->load->dbforge();
+      $this->_ee->dbforge->drop_table('mailchimp_subscribe_error_log');
     }
 
     // Update the version number.
@@ -639,7 +626,8 @@ class Mailchimp_model extends CI_Model {
     }
     catch (MCS_Exception $exception)
     {
-      $this->log_error($exception->getMessage(), $exception->getCode());
+      $this->log_error(
+        "{$exception->getMessage()} (error code: {$exception->getCode()}", 3);
     }
   }
 
@@ -836,12 +824,13 @@ class Mailchimp_model extends CI_Model {
     foreach ($result AS $r)
     {
       /**
-       * Retrieve the interest 'groupings'. MailChimp now supports multiple interest groups.
-       * If the list does not have any interest groups, error code 211 is returned, and
-       * an exception is thrown.
+       * Retrieve the interest 'groupings'. MailChimp now supports multiple
+       * interest groups. If the list does not have any interest groups, error
+       * code 211 is returned, and an exception is thrown.
        *
-       * We don't want this to bring everything crashing to a halt, so we catch the exception
-       * here, and only rethrow it if we don't recognise the error.
+       * We don't want this to bring everything crashing to a halt, so we catch
+       * the exception here, and only rethrow it if we don't recognise the
+       * error.
        */
 
       try
@@ -853,8 +842,8 @@ class Mailchimp_model extends CI_Model {
       {
         if ($exception->getCode() != '211')
         {
-          error_log('Exception: ' .$exception->getMessage()
-            .' (' . $exception->getCode() .')');
+          $this->log_error($exception->getMessage() .' (error code: '
+            .$exception->getCode() .')', 3);
 
           throw $exception;
         }
@@ -1164,8 +1153,8 @@ class Mailchimp_model extends CI_Model {
      * Process the mailing lists.
      */
 
-    $subscribe_to    = array();
-    $unsubscribe_from   = array();
+    $subscribe_to     = array();
+    $unsubscribe_from = array();
 
     foreach ($this->_settings->mailing_lists AS $list)
     {

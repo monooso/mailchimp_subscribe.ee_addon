@@ -122,16 +122,11 @@ class Mailchimp_subscribe_ext {
 
     $this->_ee->cp->set_right_nav(array(
       'nav_settings'    => $base_url .'settings',
-      'nav_unsubscribe' => $base_url .'unsubscribe_urls',
-      'nav_error_log'   => $base_url .'error_log'
+      'nav_unsubscribe' => $base_url .'unsubscribe_urls'
     ));
 
     switch ($this->_ee->input->get('tab'))
     {
-      case 'error_log':
-        return $this->_display_error_log();
-        break;
-
       case 'unsubscribe_urls':
         return $this->_display_unsubscribe_urls();
         break;
@@ -164,10 +159,10 @@ class Mailchimp_subscribe_ext {
   /**
    * Handles the cp_members_member_create hook.
    *
-   * @see   http://expressionengine.com/developers/extension_hooks/cp_members_member_create/
+   * @see     http://expressionengine.com/developers/extension_hooks/cp_members_member_create/
    * @access  public
-   * @param string    $member_id    The ID of the newly-created member.
-   * @param array     $member_data  Information about the newly-created member.
+   * @param   string    $member_id    The member ID.
+   * @param   array     $member_data  The member data.
    * @return  void
    */
   public function cp_members_member_create($member_id = '',
@@ -181,7 +176,7 @@ class Mailchimp_subscribe_ext {
   /**
    * Handles the cp_members_validate_members hook.
    *
-   * @see   http://expressionengine.com/developers/extension_hooks/cp_members_validate_members/
+   * @see     http://expressionengine.com/developers/extension_hooks/cp_members_validate_members/
    * @access  public
    * @return  void
    */
@@ -236,7 +231,7 @@ class Mailchimp_subscribe_ext {
    * Handles the member_register_validate_members hook.
    *
    * @access  public
-   * @param string    $member_id    The member ID.
+   * @param   string    $member_id    The member ID.
    * @return  void
    */
   public function member_register_validate_members($member_id = '')
@@ -271,7 +266,7 @@ class Mailchimp_subscribe_ext {
    *
    * @access  public
    * @param   array     $userdata     User class object.
-   * @param   int   $member_id    The ID of the new member.
+   * @param   int       $member_id    The ID of the new member.
    * @return  array
    */
   public function user_register_end($userdata = NULL, $member_id = '')
@@ -344,7 +339,7 @@ class Mailchimp_subscribe_ext {
    * @param   array     $member_data    An array of member data.
    * @param   int       $member_id      The member ID.
    */
-  public function zoo_visitor_register_end(Array $member_data, $member_id)
+  public function zoo_visitor_update_end(Array $member_data, $member_id)
   {
     $this->_ee->mailchimp_model->update_member_subscriptions($member_id);
     return $member_data;
@@ -355,25 +350,6 @@ class Mailchimp_subscribe_ext {
   /* --------------------------------------------------------------
    * PRIVATE METHODS
    * ------------------------------------------------------------ */
-
-  /**
-   * Displays the error log.
-   *
-   * @access  private
-   * @return  string
-   */
-  private function _display_error_log()
-  {
-    // Collate the view variables.
-    $vars = array(
-      'cp_page_title' => $this->_ee->lang->line('extension_name'),
-      'error_log'   => $this->_ee->mailchimp_model->get_error_log(),
-    );
-
-    // Load the view.
-    return $this->_ee->load->view('error_log', $vars, TRUE);
-  }
-
 
   /**
    * Displays the settings form.
