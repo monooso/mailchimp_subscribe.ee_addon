@@ -3,20 +3,20 @@
 /**
  * Handles all the API and database communication for MailChimp Subscribe.
  *
- * @author	  Stephen Lewis <addons@experienceinternet.co.uk>
- * @link		http://experienceinternet.co.uk/software/mailchimp-subscribe/
- * @package	 MailChimp Subscribe
- * @version	 2.0.4
+ * @author    Stephen Lewis <addons@experienceinternet.co.uk>
+ * @link	    http://experienceinternet.co.uk/software/mailchimp-subscribe/
+ * @package   MailChimp Subscribe
+ * @version   2.0.4
  */
 
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Base' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Api_account' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Exceptions' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Interest_group' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Mailing_list' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Merge_variable' .EXT;
-require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Settings' .EXT;
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Base.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Api_account.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Exceptions.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Interest_group.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Mailing_list.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Merge_variable.php';
+require_once PATH_THIRD .'mailchimp_subscribe/library/MCS_Settings.php';
 
 class Mailchimp_model extends CI_Model {
 
@@ -24,45 +24,50 @@ class Mailchimp_model extends CI_Model {
 	 * PRIVATE PROPERTIES
 	 * ------------------------------------------------------------ */
 
-	private $_api_account	   = NULL;
-	private $_connector		 = NULL;
+	private $_api_account     = NULL;
+	private $_connector       = NULL;
 	private $_ee;
-	private $_extension_class   = '';
-	private $_version		   = '';
-	private $_mailing_lists	 = array();
-	private $_member_fields	 = array();
-	private $_settings		  = NULL;
-	private $_site_id		   = '1';
-	private $_theme_folder_url  = '';
-	private $_view_settings	 = NULL;
+	private $_extension_class = '';
+	private $_version		      = '';
+	private $_mailing_lists	  = array();
+	private $_member_fields	  = array();
+	private $_settings		    = NULL;
+	private $_site_id		      = '1';
+	private $_theme_folder_url = '';
+	private $_view_settings	  = NULL;
 
 
 	/**
 	 * Zoo Visitors installed?
 	 *
-	 * @author Pierre-Vincent Ledoux <addons@pvledoux.be>
-	 * @access private
-	 * @var boolean
+	 * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+	 * @access  private
+	 * @var     boolean
 	 */
 	private $_zoo_visitor_installed = FALSE;
 
 	/**
 	 * Zoo Visitors settings
 	 *
-	 * @author Pierre-Vincent Ledoux <addons@pvledoux.be>
-	 * @access private
-	 * @var array
+	 * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+	 * @access  private
+	 * @var     array
 	 */
 	private $_zoo_visitor_settings = array();
 
 	/**
 	 * Zoo Visitors fields
 	 *
-	 * @author Pierre-Vincent Ledoux <addons@pvledoux.be>
-	 * @access private
-	 * @var array
+	 * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+	 * @access  private
+	 * @var     array
 	 */
 	private $_zoo_visitor_member_fields = array();
+
+
 
 	/* --------------------------------------------------------------
 	 * PUBLIC METHODS
@@ -87,18 +92,15 @@ class Mailchimp_model extends CI_Model {
 		 * and exit promptly if so.
 		 */
 
-		if ( ! isset($this->_ee->extensions->version_numbers[$this->_extension_class]))
+    if ( ! isset($this->_ee->extensions->version_numbers[
+      $this->_extension_class])
+    )
 		{
 			return;
 		}
 
-		// Load the settings.
 		$this->_load_settings_from_db();
-
-		// Init Zoo Visitor (Forked by PVL)
 		$this->_zoo_visitor_installed = $this->_init_zoo_visitor();
-
-		// Load the member fields from the database.
 		$this->_load_member_fields_from_db();
 	}
 
@@ -142,10 +144,19 @@ class Mailchimp_model extends CI_Model {
 				'method'	=> 'user_register_end',
 				'priority'  => 10
 			),
-			// Forked by PVL
 			array(
-				'hook'	  => 'zoo_visitor_register',
-				'method'	=> 'zoo_visitor_register',
+				'hook'	  => 'zoo_visitor_cp_register_end',
+				'method'	=> 'zoo_visitor_cp_register_end',
+				'priority'  => 10
+			),
+			array(
+				'hook'	  => 'zoo_visitor_cp_update_end',
+				'method'	=> 'zoo_visitor_cp_update_end',
+				'priority'  => 10
+			),
+			array(
+				'hook'	  => 'zoo_visitor_register_end',
+				'method'	=> 'zoo_visitor_register_end',
 				'priority'  => 10
 			),
 			array(
@@ -160,10 +171,10 @@ class Mailchimp_model extends CI_Model {
 			$this->_ee->db->insert(
 				'extensions',
 				array(
-					'class'	 => $this->_extension_class,
+					'class'	    => $this->_extension_class,
 					'enabled'   => 'y',
-					'hook'	  => $hook['hook'],
-					'method'	=> $hook['method'],
+					'hook'	    => $hook['hook'],
+					'method'	  => $hook['method'],
 					'priority'  => $hook['priority'],
 					'version'   => $this->_version
 				)
@@ -173,14 +184,14 @@ class Mailchimp_model extends CI_Model {
 		// Create the settings table.
 		$fields = array(
 			'site_id' => array(
-				'constraint'	=> 8,
-				'null'		  => FALSE,
-				'type'		  => 'int',
+				'constraint'  => 8,
+				'null'		    => FALSE,
+				'type'		    => 'int',
 				'unsigned'	  => TRUE
 			),
 			'settings' => array(
-				'null'		  => FALSE,
-				'type'		  => 'text',
+				'null'	=> FALSE,
+				'type'	=> 'text',
 			)
 		);
 
@@ -192,34 +203,34 @@ class Mailchimp_model extends CI_Model {
 		// Create the 'error log' table.
 		$fields = array(
 			'error_log_id' => array(
-				'auto_increment' => TRUE,
-				'constraint'	=> 10,
-				'null'		  => FALSE,
-				'type'		  => 'int',
-				'unsigned'	  => TRUE
+				'auto_increment'  => TRUE,
+				'constraint'      => 10,
+				'null'		        => FALSE,
+				'type'		        => 'int',
+				'unsigned'        => TRUE
 			),
 			'site_id' => array(
-				'constraint'	=> 5,
-				'default'	   => 1,
-				'null'		  => FALSE,
-				'type'		  => 'int',
+				'constraint'  => 5,
+				'default'     => 1,
+				'null'        => FALSE,
+				'type'        => 'int',
 				'unsigned'	  => TRUE
 			),
 			'error_date' => array(
-				'constraint'	=> 10,
-				'null'		  => FALSE,
-				'type'		  => 'int',
+				'constraint'  => 10,
+				'null'		    => FALSE,
+				'type'		    => 'int',
 				'unsigned'	  => TRUE
 			),
 			'error_code' => array(
-				'constraint'	=> 10,
-				'null'		  => TRUE,
-				'type'		  => 'varchar'
+				'constraint'  => 10,
+				'null'		    => TRUE,
+				'type'        => 'varchar'
 			),
 			'error_message' => array(
 				'constraint'	=> 255,
-				'null'		  => TRUE,
-				'type'		  => 'varchar'
+				'null'		    => TRUE,
+				'type'		    => 'varchar'
 			)
 		);
 
@@ -238,7 +249,8 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function disable_extension()
 	{
-		$this->_ee->db->delete('extensions', array('class' => $this->_extension_class));
+    $this->_ee->db->delete('extensions',
+      array('class' => $this->_extension_class));
 
 		$this->load->dbforge();
 		$this->_ee->dbforge->drop_table('mailchimp_subscribe_settings');
@@ -280,7 +292,8 @@ class Mailchimp_model extends CI_Model {
 	{
 		$db_error_log = $this->_ee->db
 			->order_by('error_log_id', 'desc')
-			->get_where('mailchimp_subscribe_error_log', array('site_id' => $this->_site_id));
+      ->get_where('mailchimp_subscribe_error_log',
+          array('site_id' => $this->_site_id));
 
 		return $db_error_log->result_array();
 	}
@@ -312,8 +325,8 @@ class Mailchimp_model extends CI_Model {
 
 	/**
 	 * Returns matching members. Pretty rudimentary at present; simply retrieves
-	 * all the exp_members and exp_member_data fields. Criteria are assumed to refer
-	 * to the exp_members table.
+   * all the exp_members and exp_member_data fields. Criteria are assumed to
+   * refer to the exp_members table.
 	 *
 	 * @access  public
 	 * @param   array   $criteria   Associative array of criteria.
@@ -328,26 +341,41 @@ class Mailchimp_model extends CI_Model {
 				: $this->_ee->db->where('members.' .$key, $val);
 		}
 
-		// If Zoo Visitor is installed, get fields of the channel
-		// Forked by PVL
-		if ($this->_zoo_visitor_installed === TRUE) {
+    /**
+     * If Zoo Visitor is installed, get fields of the channel
+     *
+     * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+     * @since   2.1.0
+     */
 
+    if ($this->_zoo_visitor_installed === TRUE)
+    {
 			$field_ids = array();
-			foreach($this->_zoo_visitor_member_fields as $zoo_field) {
-				if ($zoo_field->field_type !== 'zoo_visitor') { // We skip the ZV fieldtype
-					$field_ids[] = 'exp_channel_data.field_id_'.$zoo_field->field_id;
+
+      foreach($this->_zoo_visitor_member_fields as $zoo_field)
+      {
+        // We skip the ZV fieldtype
+        if ($zoo_field->field_type !== 'zoo_visitor')
+        {
+					$field_ids[] = 'exp_channel_data.field_id_' .$zoo_field->field_id;
 				}
 			}
+
 			$fields = implode(',', $field_ids);
+
 			$this->_ee->db->select('members.*,'.$fields);
+      $this->_ee->db->join('channel_titles',
+        'exp_members.member_id = exp_channel_titles.author_id', 'inner');
 
-			$this->_ee->db->join('channel_titles','exp_members.member_id = exp_channel_titles.author_id', 'inner');
-			$this->_ee->db->join('exp_channel_data','exp_channel_titles.entry_id = exp_channel_data.entry_id', 'inner');
-			$this->_ee->db->where('exp_channel_titles.channel_id', $this->_zoo_visitor_settings['member_channel_id']);
+      $this->_ee->db->join('exp_channel_data',
+        'exp_channel_titles.entry_id = exp_channel_data.entry_id', 'inner');
 
-		} //end fork
+      $this->_ee->db->where('exp_channel_titles.channel_id',
+        $this->_zoo_visitor_settings['member_channel_id']);
+		}
 
-		$this->_ee->db->join('member_data', 'member_data.member_id = members.member_id', 'inner');
+    $this->_ee->db->join('member_data',
+      'member_data.member_id = members.member_id', 'inner');
 
 		$db_members = $this->_ee->db->get('members');
 		return $db_members->result_array();
@@ -449,14 +477,15 @@ class Mailchimp_model extends CI_Model {
 
 				// Create the new mailing list.
 				$new_list = new MCS_Mailing_list(array(
-					'active'			=> $old_list->active,
-					'id'				=> $mailing_list->id,
-					'name'			  => $mailing_list->name,
-					'trigger_field'	 => $old_list->trigger_field,
-					'trigger_value'	 => $old_list->trigger_value,
-					'unsubscribe_url'   => $api_account->user_id
-											? sprintf($unsubscribe_url, $api_account->user_id, $mailing_list->id)
-											: ''
+					'active'			    => $old_list->active,
+					'id'				      => $mailing_list->id,
+					'name'			      => $mailing_list->name,
+					'trigger_field'	  => $old_list->trigger_field,
+					'trigger_value'	  => $old_list->trigger_value,
+					'unsubscribe_url' => $api_account->user_id
+            ? sprintf($unsubscribe_url, $api_account->user_id,
+                $mailing_list->id)
+            : ''
 				));
 
 				// Interest Groups.
@@ -564,20 +593,16 @@ class Mailchimp_model extends CI_Model {
 	 */
 	public function update_extension($current_version = '')
 	{
-		if ( ! $current_version OR $current_version == $this->_version)
+    if ( ! $current_version
+      OR version_compare($current_version, $this->_version, '>=')
+    )
 		{
 			return FALSE;
 		}
 
 		// Update the version number.
-		if ($current_version < $this->_version)
-		{
-			$this->_ee->db->update(
-				'extensions',
-				array('version' => $this->_version),
-				array('class' => $this->_extension_class)
-			);
-		}
+    $this->_ee->db->update('extensions', array('version' => $this->_version),
+      array('class' => $this->_extension_class));
 
 		return TRUE;
 	}
@@ -632,16 +657,24 @@ class Mailchimp_model extends CI_Model {
 				}
 
 				// Basic list information.
-				$list			   = new MCS_Mailing_list();
-				$list->active	   = 'y';
-				$list->id		   = $list_id;
-				$list->trigger_field = isset($list_settings['trigger_field']) ? $list_settings['trigger_field'] : '';
-				$list->trigger_value = isset($list_settings['trigger_value']) ? $list_settings['trigger_value'] : '';
+				$list			    = new MCS_Mailing_list();
+				$list->active	= 'y';
+				$list->id		  = $list_id;
+
+        $list->trigger_field = isset($list_settings['trigger_field'])
+          ? $list_settings['trigger_field'] : '';
+
+        $list->trigger_value = isset($list_settings['trigger_value'])
+          ? $list_settings['trigger_value'] : '';
 
 				// Interest groups.
-				if (isset($list_settings['interest_groups']) && is_array($list_settings['interest_groups']))
+        if (isset($list_settings['interest_groups'])
+          && is_array($list_settings['interest_groups'])
+        )
 				{
-					foreach ($list_settings['interest_groups'] AS $mailchimp_field_id => $member_field_id)
+          foreach ($list_settings['interest_groups']
+            AS $mailchimp_field_id => $member_field_id
+          )
 					{
 						$list->add_interest_group(new MCS_Interest_group(array(
 							'id'				=> $mailchimp_field_id,
@@ -651,13 +684,17 @@ class Mailchimp_model extends CI_Model {
 				}
 
 				// Merge variables.
-				if (isset($list_settings['merge_variables']) && is_array($list_settings['merge_variables']))
+        if (isset($list_settings['merge_variables'])
+          && is_array($list_settings['merge_variables'])
+        )
 				{
-					foreach ($list_settings['merge_variables'] AS $mailchimp_field_id => $member_field_id)
+          foreach ($list_settings['merge_variables']
+            AS $mailchimp_field_id => $member_field_id
+          )
 					{
 						$list->add_merge_variable(new MCS_Merge_variable(array(
-							'tag'			   => $mailchimp_field_id,
-							'member_field_id'   => $member_field_id
+							'tag'			        => $mailchimp_field_id,
+							'member_field_id' => $member_field_id
 						)));
 					}
 				}
@@ -704,13 +741,15 @@ class Mailchimp_model extends CI_Model {
 		// Was the connector method called successfully?
 		if ($result === FALSE)
 		{
-			throw new MCS_Api_exception($this->_connector->errorMessage, $this->_connector->errorCode);
+      throw new MCS_Api_exception($this->_connector->errorMessage,
+        $this->_connector->errorCode);
 		}
 
 		// Was the API method called successfully.
 		if ($this->_connector->errorCode)
 		{
-			throw new MCS_Api_exception($this->_connector->errorMessage, $this->_connector->errorCode);
+      throw new MCS_Api_exception($this->_connector->errorMessage,
+        $this->_connector->errorCode);
 		}
 
 		return $result;
@@ -791,13 +830,16 @@ class Mailchimp_model extends CI_Model {
 
 			try
 			{
-				$interest_groups = $this->_call_api('listInterestGroupings', array($r['id']));
+        $interest_groups = $this->_call_api('listInterestGroupings',
+          array($r['id']));
 			}
 			catch (Exception $exception)
 			{
 				if ($exception->getCode() != '211')
 				{
-					error_log('Exception: ' .$exception->getMessage() .' (' . $exception->getCode() .')');
+          error_log('Exception: ' .$exception->getMessage()
+            .' (' . $exception->getCode() .')');
+
 					throw $exception;
 				}
 
@@ -809,10 +851,10 @@ class Mailchimp_model extends CI_Model {
 
 			// Add the list.
 			$lists[] = new MCS_Mailing_list(array(
-				'interest_groups'   => $interest_groups,
-				'id'				=> $r['id'],
-				'merge_variables'   => $merge_vars,
-				'name'			  => $r['name']
+				'interest_groups' => $interest_groups,
+				'id'				      => $r['id'],
+				'merge_variables' => $merge_vars,
+				'name'			      => $r['name']
 			));
 		}
 
@@ -820,66 +862,65 @@ class Mailchimp_model extends CI_Model {
 	}
 
 	/**
-	 * Check if Zoo Visitor is installed
-	 * and get its settings if it's the case
+   * Check if Zoo Visitor is installed. If it is, retrieve the Zoo Vistor
+   * settings.
 	 *
-	 * @author Pierre-Vincent Ledoux <addons@pvledoux.be>
-	 * @access private
-	 * @return void
+	 * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @author  Stephen Lewis
+   * @since   2.1.0
+	 * @access  private
+	 * @return  void
 	 */
 	private function _init_zoo_visitor()
 	{
-		// Check if Zoo Visitor is installed
 		$this->_ee->load->model('addons_model');
-		if ($this->_ee->addons_model->module_installed('Zoo_visitor')) {
+    $this->_ee->load->model('channel_model');
 
-			// Ok Zoo Visitor is installed, so let's get its settings
-			$stmt = $this->_ee->db->select('var, var_value')
-								->from('zoo_visitor_settings')
-								->where(array('site_id'=>$this->_ee->config->item('site_id')));
-			$zoo_settings_query = $stmt->get();
+    if ( ! $this->_ee->addons_model->module_installed('Zoo_visitor'))
+    {
+      return FALSE;
+    }
 
-			if ($zoo_settings_query->num_rows() > 0) {
+    $zoo_settings_query = $this->_ee->db
+      ->select('var, var_value')
+      ->from('zoo_visitor_settings')
+      ->get_where(array('site_id' => $this->_ee->config->item('site_id')));
 
-				foreach($zoo_settings_query->result() as $setting) {
+    if ( ! $zoo_settings_query->num_rows())
+    {
+      return FALSE;
+    }
 
-					$this->_zoo_visitor_settings[$setting->var] = $setting->var_value;
+    foreach ($zoo_settings_query->result() as $setting)
+    {
+      $this->_zoo_visitor_settings[$setting->var] = $setting->var_value;
+    }
 
-				}
+    // Ensure that settings are correct
+    if ( ! isset($this->_zoo_visitor_settings['member_channel_id']))
+    {
+      return FALSE;
+    }
 
-				// Ensure that settings are correct
-				if (isset($this->_zoo_visitor_settings['member_channel_id'])) {
+    $zoo_channel = $this->_ee->channel_model->get_channel_info(
+      $this->_zoo_visitor_settings['member_channel_id']);
 
-					$this->_ee->load->model('channel_model');
-					$zoo_channel = $this->_ee->channel_model->get_channel_info($this->_zoo_visitor_settings['member_channel_id']);
+    if ($zoo_channel->num_rows() > 0)
+    {
+      $row          = $zoo_channel->row();
+      $field_group  = $row->field_group;
 
-					if ($zoo_channel->num_rows() > 0) {
+      $zoo_fields = $this->_ee->channel_model->get_channel_fields(
+        $field_group);
 
-						$row = $zoo_channel->row();
-						$field_group = $row->field_group;
-						// Get the fields
-						$zoo_fields = $this->_ee->channel_model->get_channel_fields($field_group);
+      if ($zoo_fields->num_rows() > 0)
+      {
+        $this->_zoo_visitor_member_fields = $zoo_fields->result();
+        return TRUE;
+      }
+    }
 
-						if ($zoo_fields->num_rows() > 0) {
-
-							$this->_zoo_visitor_member_fields = $zoo_fields->result();
-							return TRUE;
-
-						}
-					}
-
-				} else {
-					return FALSE;
-				}
-
-			} else {
-				return FALSE;
-			}
-
-		} else {
-			return FALSE;
-		}
-
+    return FALSE;
 	}
 
 
@@ -900,36 +941,36 @@ class Mailchimp_model extends CI_Model {
 
 		$member_fields = array(
 			'location' => array(
-				'id'		=> 'location',
-				'label'	 => lang('mbr_location'),
-				'options'   => array(),
+				'id'		  => 'location',
+				'label'	  => lang('mbr_location'),
+				'options' => array(),
 				'type'	  => 'text'
 			),
 			'screen_name' => array(
-				'id'		=> 'screen_name',
-				'label'	 => lang('mbr_screen_name'),
-				'options'   => array(),
+				'id'		  => 'screen_name',
+				'label'	  => lang('mbr_screen_name'),
+				'options' => array(),
 				'type'	  => 'text'
 			),
 			'url' => array(
-				'id'		=> 'url',
-				'label'	 => lang('mbr_url'),
-				'options'   => array(),
+				'id'	    => 'url',
+				'label'	  => lang('mbr_url'),
+				'options' => array(),
 				'type'	  => 'text'
 			),
 			'username' => array(
-				'id'		=> 'username',
-				'label'	 => lang('mbr_username'),
-				'options'   => array(),
+				'id'	    => 'username',
+				'label'	  => lang('mbr_username'),
+				'options' => array(),
 				'type'	  => 'text'
 			)
 		);
 
-		// Check if Zoo Visitor is installed and initialized
-		// Forked by PVL
-		if ($this->_zoo_visitor_installed === TRUE) {
-
-			foreach($this->_zoo_visitor_member_fields as $zoo_field) {
+		// Check if Zoo Visitor is installed and initialized.
+    if ($this->_zoo_visitor_installed === TRUE)
+    {
+      foreach($this->_zoo_visitor_member_fields as $zoo_field)
+      {
 
 				if ($zoo_field->field_type == 'select')
 				{
@@ -946,23 +987,27 @@ class Mailchimp_model extends CI_Model {
 					$options = array();
 				}
 
-				//Skip zoo_visitor field, which is not used
-				if ($zoo_field->field_type !== 'zoo_visitor') {
-
+				// Skip zoo_visitor field, which is not used.
+        if ($zoo_field->field_type !== 'zoo_visitor')
+        {
 					$member_fields['field_id_'.$zoo_field->field_id] = array(
-					'id'		=> 'field_id_'.$zoo_field->field_id,
-					'label'	 => $zoo_field->field_label,
-					'options'   => $options,
-					'type'	  => $zoo_field->field_type == 'select' ? 'select' : 'text'
+            'id'      => 'field_id_'.$zoo_field->field_id,
+            'label'   => $zoo_field->field_label,
+            'options' => $options,
+            'type'	  => $zoo_field->field_type == 'select'
+              ? 'select' : 'text'
 					);
 
 				}
 			}
 
-		} else { //If Zoo Visitor is not installed, we use the normal way...
-
-			// Load the custom member fields.
-			$db_member_fields = $this->_ee->db->select('m_field_id, m_field_label, m_field_type, m_field_list_items')->get('member_fields');
+    }
+    else
+    {
+      // If Zoo Visitor is not installed, we use the normal way...
+      $db_member_fields = $this->_ee->db
+        ->select('m_field_id, m_field_label, m_field_type, m_field_list_items')
+        ->get('member_fields');
 
 			if ($db_member_fields->num_rows() > 0)
 			{
@@ -990,16 +1035,16 @@ class Mailchimp_model extends CI_Model {
 					}
 
 					$member_fields['m_field_id_' .$row->m_field_id] = array(
-						'id'		=> 'm_field_id_' .$row->m_field_id,
-						'label'	 => $row->m_field_label,
-						'options'   => $options,
+						'id'	    => 'm_field_id_' .$row->m_field_id,
+						'label'	  => $row->m_field_label,
+						'options' => $options,
 						'type'	  => $row->m_field_type == 'select' ? 'select' : 'text'
 					);
 				}
 			}
 		}
 
-			$this->_member_fields = $member_fields;
+    $this->_member_fields = $member_fields;
 	}
 
 
@@ -1025,7 +1070,8 @@ class Mailchimp_model extends CI_Model {
 		{
 			$this->_ee->load->helper('string');
 
-			$site_settings = unserialize(strip_slashes($db_settings->row()->settings));
+      $site_settings = unserialize(strip_slashes(
+        $db_settings->row()->settings));
 
 			$settings->populate_from_array($site_settings);
 		}
@@ -1039,16 +1085,19 @@ class Mailchimp_model extends CI_Model {
 	 * a member's existing subscriptions.
 	 *
 	 * @access  private
-	 * @param   string	  $member_id	  The member ID.
-	 * @param   bool		$update		 Are we updating existing subscriptions?
+	 * @param   string	$member_id	  The member ID.
+	 * @param   bool	  $update		    Are we updating existing subscriptions?
 	 * @return  void
 	 */
-	private function _update_member_subscriptions($member_id = '', $update = FALSE)
+  private function _update_member_subscriptions($member_id = '',
+    $update = FALSE
+  )
 	{
 		// Check that we have a member ID.
 		if ( ! $member_id)
 		{
-			throw new MCS_Data_exception('Unable to update member subscriptions (missing member ID).');
+      throw new MCS_Data_exception('Unable to update member subscriptions
+        (missing member ID).');
 		}
 
 		// Retrieve the member.
@@ -1065,7 +1114,8 @@ class Mailchimp_model extends CI_Model {
 		// Is the member banned?
 		if (in_array($member['group_id'], array('2', '4')))
 		{
-			throw new MCS_Data_exception('Unable to update subscriptions for banned member ' .$member['screen_name'] .' (' .$member_id .')');
+      throw new MCS_Data_exception('Unable to update subscriptions for banned
+        member ' .$member['screen_name'] .' (' .$member_id .')');
 		}
 
 		/**
@@ -1093,7 +1143,9 @@ class Mailchimp_model extends CI_Model {
 			 * the member has opted-in to this list.
 			 */
 
-			if (isset($member[$list->trigger_field]) && $member[$list->trigger_field] === $list->trigger_value)
+      if (isset($member[$list->trigger_field])
+        && $member[$list->trigger_field] === $list->trigger_value
+      )
 			{
 				$subscribe_to[] = $list;
 			}
@@ -1104,7 +1156,9 @@ class Mailchimp_model extends CI_Model {
 		}
 
 		// Do we have an work to do?
-		if (count($subscribe_to) == 0 && ($update == FALSE OR count($unsubscribe_from) == 0))
+    if (count($subscribe_to) == 0
+      && ($update == FALSE OR count($unsubscribe_from) == 0)
+    )
 		{
 			return;
 		}
@@ -1131,8 +1185,8 @@ class Mailchimp_model extends CI_Model {
 				if ($val->id && isset($member[$val->member_field_id]))
 				{
 					$groupings[$val->id] = array(
-						'id'		=> $val->id,
-						'groups'	=> str_replace(',', '\,', $member[$val->member_field_id])
+						'id'      => $val->id,
+						'groups'  => str_replace(',', '\,', $member[$val->member_field_id])
 					);
 				}
 			}
@@ -1144,10 +1198,10 @@ class Mailchimp_model extends CI_Model {
 
 			/**
 			 * @since   2.0.1
-			 * @see	 http://www.mailchimp.com/api/rtfm/listsubscribe.func.php
+			 * @see	    http://www.mailchimp.com/api/rtfm/listsubscribe.func.php
 			 *
-			 * Passing a blank $merge_vars array will fail. We should either pass an empty string,
-			 * or array('').
+       * Passing a blank $merge_vars array will fail. We should either pass an
+       * empty string or array('').
 			 */
 
 			if ( ! $merge_vars)
@@ -1160,9 +1214,9 @@ class Mailchimp_model extends CI_Model {
 				$list->id,
 				$member['email'],
 				$merge_vars,
-				'html',			 // Email format.
-				FALSE,			  // Double opt-in?
-				(bool)$update	   // Update existing subscription?
+				'html',			    // Email format.
+				FALSE,			    // Double opt-in?
+        (bool) $update  // Update existing subscription?
 			));
 		}
 
@@ -1178,5 +1232,6 @@ class Mailchimp_model extends CI_Model {
 
 }
 
+
 /* End of file	  : mailchimp_model.php */
-/* File location	: /system/expressionengine/third_party/mailchimp_subscribe/models/mailchimp_model.php */
+/* File location	: third_party/mailchimp_subscribe/models/mailchimp_model.php */
