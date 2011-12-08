@@ -6,7 +6,7 @@
  * @author    Stephen Lewis <addons@experienceinternet.co.uk>
  * @link      http://experienceinternet.co.uk/software/mailchimp-subscribe/
  * @package   MailChimp Subscribe
- * @version   2.0.4
+ * @version   2.1.0
  */
 
 require_once PATH_THIRD .'mailchimp_subscribe/library/MCAPI.class.php';
@@ -84,9 +84,9 @@ class Mailchimp_model extends CI_Model {
     parent::__construct();
 
     $this->_extension_class = 'Mailchimp_subscribe_ext';
-    $this->_version    = '2.0.4';
-    $this->_ee        =& get_instance();
-    $this->_site_id    = $this->_ee->config->item('site_id');
+    $this->_version         = '2.1.0';
+    $this->_ee              =& get_instance();
+    $this->_site_id         = $this->_ee->config->item('site_id');
 
     /**
      * Annoyingly, this method is still called, even if the extension
@@ -888,8 +888,8 @@ class Mailchimp_model extends CI_Model {
 
     $zoo_settings_query = $this->_ee->db
       ->select('var, var_value')
-      ->from('zoo_visitor_settings')
-      ->get_where(array('site_id' => $this->_ee->config->item('site_id')));
+      ->get_where('zoo_visitor_settings',
+        array('site_id' => $this->_ee->config->item('site_id')));
 
     if ( ! $zoo_settings_query->num_rows())
     {
