@@ -1072,6 +1072,7 @@ class Mailchimp_model extends CI_Model {
           'hook'      => $hook['hook'],
           'method'    => $hook['method'],
           'priority'  => $hook['priority'],
+          'settings'  => '',
           'version'   => $this->_version
         )
       );
