@@ -209,7 +209,8 @@ class Mailchimp_subscribe_ext {
     if ((strtolower($this->_ee->config->item('req_mbr_activation')) !== 'none')
       OR ( ! isset($data['username']))
       OR ( ! isset($data['email']))
-      OR ( ! isset($data['join_date'])))
+      OR ( ! isset($data['join_date']))
+	  OR ( ! empty($this->_ee->session->cache['mailchimp_subscribe']['cancel_subscription'])))
     {
       return FALSE;
     }
@@ -369,6 +370,11 @@ class Mailchimp_subscribe_ext {
     {
       $cleaned_member_fields[$key] = $data['label'];
     }
+
+	if ($this->_ee->extensions->active_hook('mailchimp_subscribe_member_fields'))
+	{
+		$cleaned_member_fields = $this->_ee->extensions->call('mailchimp_subscribe_member_fields', $cleaned_member_fields);
+	}
 
     // Collate the view variables.
     $vars = array(
