@@ -332,6 +332,7 @@ class Mailchimp_model extends CI_Model {
 		// Forked by PVL
 		if ($this->_zoo_visitor_installed === TRUE) {
 
+			// Get Field Ids of Zoo Visitor Channels
 			$field_ids = array();
 			foreach($this->_zoo_visitor_member_fields as $zoo_field) {
 				if ($zoo_field->field_type !== 'zoo_visitor') { // We skip the ZV fieldtype
@@ -339,18 +340,46 @@ class Mailchimp_model extends CI_Model {
 				}
 			}
 			$fields = implode(',', $field_ids);
-			$this->_ee->db->select('members.*,'.$fields);
 
-			$this->_ee->db->join('channel_titles','exp_members.member_id = exp_channel_titles.author_id', 'inner');
-			$this->_ee->db->join('exp_channel_data','exp_channel_titles.entry_id = exp_channel_data.entry_id', 'inner');
-			$this->_ee->db->where('exp_channel_titles.channel_id', $this->_zoo_visitor_settings['member_channel_id']);
+			// Get Member fields data
+			$this->_ee->db->select('members.*, exp_channel_data.entry_id, ' . $fields)
+							->join('member_data', 'member_data.member_id = members.member_id', 'inner')
+							->join('channel_titles','exp_members.member_id = exp_channel_titles.author_id', 'inner')
+							->join('exp_channel_data','exp_channel_titles.entry_id = exp_channel_data.entry_id', 'inner')
+							->where('exp_channel_titles.channel_id', $this->_zoo_visitor_settings['member_channel_id']);
 
-		} //end fork
+			$db_members = $this->_ee->db->get('members')->result_array();
 
-		$this->_ee->db->join('member_data', 'member_data.member_id = members.member_id', 'inner');
+			foreach ($db_members as $key => $member) {
 
-		$db_members = $this->_ee->db->get('members');
-		return $db_members->result_array();
+				// Get Member categories
+				$cats = $this->_ee->db->select('exp_categories.cat_id, exp_categories.group_id, exp_categories.cat_name, exp_categories.cat_url_title')
+								->from('exp_channels')
+								->join('exp_categories', 'exp_channels.cat_group = exp_categories.group_id')
+								->join('exp_category_posts', 'exp_categories.cat_id = exp_category_posts.cat_id')
+								->where('exp_channels.channel_id', $this->_zoo_visitor_settings['member_channel_id'])
+								->where('exp_category_posts.entry_id', $member['entry_id'])
+								->get();
+
+				if ($cats->num_rows() > 0) {
+					$str_cats = '';
+					foreach ($cats->result_array() as $cat) {
+
+						$str_cats .= str_replace(',', '\,', $cat['cat_url_title']) . ','; // FIXME we could have more than one cat per
+
+					}
+					$db_members[$key]['cat_group_id_'.$cat['group_id']] = substr($str_cats, 0, -1);
+				}
+
+			}
+
+		} else {
+			$this->_ee->db->join('member_data', 'member_data.member_id = members.member_id', 'inner');
+			$db_members = $this->_ee->db->get('members')->result_array();
+		}
+
+
+		return $db_members;
 	}
 
 
@@ -831,6 +860,7 @@ class Mailchimp_model extends CI_Model {
 	{
 		// Check if Zoo Visitor is installed
 		$this->_ee->load->model('addons_model');
+		$this->_ee->load->model('category_model');
 		if ($this->_ee->addons_model->module_installed('Zoo_visitor')) {
 
 			// Ok Zoo Visitor is installed, so let's get its settings
@@ -857,15 +887,35 @@ class Mailchimp_model extends CI_Model {
 
 						$row = $zoo_channel->row();
 						$field_group = $row->field_group;
+						$cat_group = $row->cat_group;
+
 						// Get the fields
 						$zoo_fields = $this->_ee->channel_model->get_channel_fields($field_group);
 
 						if ($zoo_fields->num_rows() > 0) {
-
 							$this->_zoo_visitor_member_fields = $zoo_fields->result();
-							return TRUE;
-
 						}
+
+						// Get the categories, if any
+						$category_groups = $this->_ee->category_model->get_category_groups(explode('|', $cat_group));
+						if ($category_groups->num_rows() > 0) {
+
+							$members_cats = array();
+							foreach($category_groups->result() as $catgroup) {
+								$categories = $this->_ee->category_model->get_channel_categories($catgroup->group_id);
+								$members_cats[] = array(
+										'id'	=> $catgroup->group_id,
+										'name'	=> $catgroup->group_name,
+										'categories' => $categories->result_array()
+									);
+							}
+
+							// Get categories
+							$this->_zoo_visitor_member_categories = $members_cats;
+						}
+
+						return TRUE;
+
 					}
 
 				} else {
@@ -950,13 +1000,28 @@ class Mailchimp_model extends CI_Model {
 				if ($zoo_field->field_type !== 'zoo_visitor') {
 
 					$member_fields['field_id_'.$zoo_field->field_id] = array(
-					'id'		=> 'field_id_'.$zoo_field->field_id,
-					'label'	 => $zoo_field->field_label,
-					'options'   => $options,
-					'type'	  => $zoo_field->field_type == 'select' ? 'select' : 'text'
+						'id'		=> 'field_id_'.$zoo_field->field_id,
+						'label'		=> $zoo_field->field_label,
+						'options'	=> $options,
+						'type'		=> $zoo_field->field_type == 'select' ? 'select' : 'text'
 					);
 
 				}
+			}
+
+			foreach($this->_zoo_visitor_member_categories as $member_category) {
+
+					$options = array();
+					foreach ($member_category['categories'] as $key => $value) {
+						$options[$value['cat_name']] = $value['cat_name'];
+					}
+
+					$member_fields['cat_group_id_'.$member_category['id']] = array(
+						'id'		=> 'cat_group_id_'.$member_category['id'],
+						'label'		=> $member_category['name'],
+						'options'	=> $options,
+						'type'		=> 'select'
+					);
 			}
 
 		} else { //If Zoo Visitor is not installed, we use the normal way...
@@ -1114,7 +1179,6 @@ class Mailchimp_model extends CI_Model {
 		{
 			// Merge variables.
 			$merge_vars = array();
-
 			foreach ($list->merge_variables AS $tag => $val)
 			{
 				if ($val->tag && isset($member[$val->member_field_id]))
@@ -1125,14 +1189,13 @@ class Mailchimp_model extends CI_Model {
 
 			// Interest groups.
 			$groupings = array();
-
 			foreach ($list->interest_groups AS $id => $val)
 			{
 				if ($val->id && isset($member[$val->member_field_id]))
 				{
 					$groupings[$val->id] = array(
 						'id'		=> $val->id,
-						'groups'	=> str_replace(',', '\,', $member[$val->member_field_id])
+						'groups'	=> $member[$val->member_field_id]
 					);
 				}
 			}
