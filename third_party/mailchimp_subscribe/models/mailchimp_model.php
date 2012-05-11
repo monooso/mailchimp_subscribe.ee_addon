@@ -303,7 +303,7 @@ class Mailchimp_model extends CI_Model {
 
       $fields = implode(',', $field_ids);
 
-      $this->_ee->db->select('members.*,'.$fields);
+      $this->_ee->db->select('members.*, exp_channel_titles.entry_id, '.$fields);
       $this->_ee->db->join('channel_titles',
         'exp_members.member_id = exp_channel_titles.author_id', 'inner');
 
@@ -312,13 +312,39 @@ class Mailchimp_model extends CI_Model {
 
       $this->_ee->db->where('exp_channel_titles.channel_id',
         $this->_zoo_visitor_settings['member_channel_id']);
+
+      $db_members = $this->_ee->db->get('members')->result_array();
+
+      foreach ($db_members as $key => $member)
+      {
+        // Get Member categories
+        $cats = $this->_ee->db->select('exp_categories.cat_id, exp_categories.group_id, exp_categories.cat_name, exp_categories.cat_url_title')
+                              ->from('exp_channels')
+                              ->join('exp_categories', 'exp_channels.cat_group = exp_categories.group_id')
+                              ->join('exp_category_posts', 'exp_categories.cat_id = exp_category_posts.cat_id')
+                              ->where('exp_channels.channel_id', $this->_zoo_visitor_settings['member_channel_id'])
+                              ->where('exp_category_posts.entry_id', $member['entry_id'])
+                              ->get();
+
+        if ($cats->num_rows() > 0)
+        {
+          $str_cats = '';
+          foreach ($cats->result_array() as $cat)
+          {
+            // Escape cat name if it contains comma, then contact... with a comma...
+            $str_cats .= str_replace(',', '\,', $cat['cat_url_title']) . ',';
+          }
+          $db_members[$key]['cat_group_id_'.$cat['group_id']] = substr($str_cats, 0, -1); // remove last comma
+        }
+      }
     }
-
-    $this->_ee->db->join('member_data',
+    else
+    {
+      $this->_ee->db->join('member_data',
       'member_data.member_id = members.member_id', 'inner');
-
-    $db_members = $this->_ee->db->get('members');
-    return $db_members->result_array();
+      $db_members = $this->_ee->db->get('members')->result_array();
+    }
+    return $db_members;
   }
 
 
@@ -880,6 +906,7 @@ class Mailchimp_model extends CI_Model {
   {
     $this->_ee->load->model('addons_model');
     $this->_ee->load->model('channel_model');
+    $this->_ee->load->model('category_model');
 
     if ( ! $this->_ee->addons_model->module_installed('Zoo_visitor'))
     {
@@ -912,8 +939,9 @@ class Mailchimp_model extends CI_Model {
 
     if ($zoo_channel->num_rows() > 0)
     {
-      $row          = $zoo_channel->row();
-      $field_group  = $row->field_group;
+      $row         = $zoo_channel->row();
+      $field_group = $row->field_group;
+      $cat_group   = $row->cat_group;
 
       $zoo_fields = $this->_ee->channel_model->get_channel_fields(
         $field_group);
@@ -921,8 +949,27 @@ class Mailchimp_model extends CI_Model {
       if ($zoo_fields->num_rows() > 0)
       {
         $this->_zoo_visitor_member_fields = $zoo_fields->result();
-        return TRUE;
       }
+
+      // Get the categories, if any
+      $category_groups = $this->_ee->category_model->get_category_groups(explode('|', $cat_group));
+      if ($category_groups->num_rows() > 0) {
+
+        $members_cats = array();
+        foreach($category_groups->result() as $catgroup) {
+          $categories = $this->_ee->category_model->get_channel_categories($catgroup->group_id);
+          $members_cats[] = array(
+              'id'  => $catgroup->group_id,
+              'name'  => $catgroup->group_name,
+              'categories' => $categories->result_array()
+            );
+          // Get categories
+          $this->_zoo_visitor_member_categories = $members_cats;
+        }
+      }
+
+      return TRUE;
+
     }
 
     return FALSE;
@@ -1004,6 +1051,23 @@ class Mailchimp_model extends CI_Model {
           );
 
         }
+      }
+
+      foreach($this->_zoo_visitor_member_categories as $member_category)
+      {
+
+          $options = array();
+          foreach ($member_category['categories'] as $key => $value)
+          {
+            $options[$value['cat_name']] = $value['cat_name'];
+          }
+
+          $member_fields['cat_group_id_'.$member_category['id']] = array(
+            'id'    => 'cat_group_id_'.$member_category['id'],
+            'label'   => $member_category['name'],
+            'options' => $options,
+            'type'    => 'select'
+          );
       }
 
     }
@@ -1218,7 +1282,7 @@ class Mailchimp_model extends CI_Model {
         {
           $groupings[$val->id] = array(
             'id'      => $val->id,
-            'groups'  => str_replace(',', '\,', $member[$val->member_field_id])
+            'groups'  => $member[$val->member_field_id]
           );
         }
       }
