@@ -1117,7 +1117,14 @@ class Mailchimp_model extends CI_Model {
    * a member's existing subscriptions.
    *
    * @access  private
-   * @param   string  $member_id    The member ID.
+   * @param   string|array  $member_id    The member ID, or an array containing
+   * 										the following member data:
+   * 										- member_id
+   * 										- group_id
+   * 										- screen_name
+   * 										- email
+   * 										- custom field data for: trigger field,
+   * 										  merge variables, and interest groups
    * @param   bool    $update       Are we updating existing subscriptions?
    * @return  void
    */
@@ -1125,6 +1132,13 @@ class Mailchimp_model extends CI_Model {
     $update = FALSE
   )
   {
+	if (is_array($member_id))
+	{
+	  $member = $member_id;
+
+	  $member_id = isset($member['member_id']) ? $member['member_id'] : FALSE;
+	}
+
     // Check that we have a member ID.
     if ( ! $member_id)
     {
@@ -1132,16 +1146,19 @@ class Mailchimp_model extends CI_Model {
         (missing member ID).');
     }
 
-    // Retrieve the member.
-    $members = $this->get_members(array('member_id' => $member_id));
+	if ( ! isset($member))
+	{
+	  // Retrieve the member.
+	  $members = $this->get_members(array('member_id' => $member_id));
 
-    if (count($members) !== 1)
-    {
-      throw new MCS_Data_exception('Error retrieving member ID ' .$member_id);
-    }
+	  if (count($members) !== 1)
+	  {
+	    throw new MCS_Data_exception('Error retrieving member ID ' .$member_id);
+	  }
 
-    // Convenience.
-    $member = $members[0];
+	  // Convenience.
+	  $member = $members[0];
+	}
 
     // Is the member banned?
     if (in_array($member['group_id'], array('2', '4')))
