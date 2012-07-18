@@ -171,6 +171,16 @@ class Mailchimp_model extends CI_Model {
         'hook'    => 'zoo_visitor_update_end',
         'method'  => 'zoo_visitor_update_end',
         'priority'  => 10
+      ),
+      array(
+        'hook'    => 'safecracker_registration_register_member',
+        'method'  => 'safecracker_registration_register_member',
+        'priority'  => 10
+      ),
+      array(
+        'hook'    => 'safecracker_registration_edit_member',
+        'method'  => 'safecracker_registration_edit_member',
+        'priority'  => 10
       )
     );
 
@@ -1053,21 +1063,23 @@ class Mailchimp_model extends CI_Model {
         }
       }
 
-      foreach($this->_zoo_visitor_member_categories as $member_category)
-      {
+      if (isset($this->_zoo_visitor_member_categories ) && count($this->_zoo_visitor_member_categories ) > 0) {
+        foreach($this->_zoo_visitor_member_categories as $member_category)
+        {
 
-          $options = array();
-          foreach ($member_category['categories'] as $key => $value)
-          {
-            $options[$value['cat_name']] = $value['cat_name'];
-          }
+            $options = array();
+            foreach ($member_category['categories'] as $key => $value)
+            {
+              $options[$value['cat_name']] = $value['cat_name'];
+            }
 
-          $member_fields['cat_group_id_'.$member_category['id']] = array(
-            'id'    => 'cat_group_id_'.$member_category['id'],
-            'label'   => $member_category['name'],
-            'options' => $options,
-            'type'    => 'select'
-          );
+            $member_fields['cat_group_id_'.$member_category['id']] = array(
+              'id'    => 'cat_group_id_'.$member_category['id'],
+              'label'   => $member_category['name'],
+              'options' => $options,
+              'type'    => 'select'
+            );
+        }
       }
 
     }
