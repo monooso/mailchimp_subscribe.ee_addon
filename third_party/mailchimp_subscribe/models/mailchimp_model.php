@@ -67,7 +67,35 @@ class Mailchimp_model extends CI_Model {
    */
   private $_zoo_visitor_member_fields = array();
 
+  /**
+   * Safecracker Registration installed?
+   *
+   * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+   * @access  private
+   * @var     boolean
+   */
+  private $_sc_registration_installed = FALSE;
 
+  /**
+   * Safecracker Registration fields
+   *
+   * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+   * @access  private
+   * @var     array
+   */
+  private $_sc_registration_member_fields = array();
+
+  /**
+   * Safecracker Registration settings
+   *
+   * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+   * @access  private
+   * @var     array
+   */
+  private $_sc_registration_settings = array();
 
   /* --------------------------------------------------------------
    * PUBLIC METHODS
@@ -82,6 +110,7 @@ class Mailchimp_model extends CI_Model {
   public function __construct()
   {
     parent::__construct();
+
 
     $this->_extension_class = 'Mailchimp_subscribe_ext';
     $this->_version         = '2.1.0';
@@ -103,6 +132,7 @@ class Mailchimp_model extends CI_Model {
 
     $this->_load_settings_from_db();
     $this->_zoo_visitor_installed = $this->_init_zoo_visitor();
+    $this->_sc_registration_installed = $this->_init_sc_registration();
     $this->_load_member_fields_from_db();
 
     // OmniLog FTW!
@@ -298,21 +328,31 @@ class Mailchimp_model extends CI_Model {
      * @since   2.1.0
      */
 
-    if ($this->_zoo_visitor_installed === TRUE)
+    if ($this->_zoo_visitor_installed === TRUE OR $this->_sc_registration_installed === TRUE)
     {
+      if ($this->_zoo_visitor_installed === TRUE)
+      {
+        $member_channel_fields = $this->_zoo_visitor_member_fields;
+        $channel_id = $this->_zoo_visitor_settings['member_channel_id'];
+      } else {
+        $member_channel_fields = $this->_sc_registration_member_fields;
+        $channel_id = $this->_sc_registration_settings['member_channel_id'];
+      }
+
       $field_ids = array();
 
-      foreach($this->_zoo_visitor_member_fields as $zoo_field)
+      foreach($member_channel_fields as $channel_field)
       {
         // We skip the ZV fieldtype
-        if ($zoo_field->field_type !== 'zoo_visitor')
+        if ($channel_field->field_type !== 'zoo_visitor')
         {
-          $field_ids[] = 'exp_channel_data.field_id_' .$zoo_field->field_id;
+          $field_ids[] = 'exp_channel_data.field_id_' .$channel_field->field_id;
         }
       }
 
-      $fields = implode(',', $field_ids);
 
+      // Generate a list of field_id
+      $fields = implode(',', $field_ids);
       $this->_ee->db->select('members.*, exp_channel_titles.entry_id, '.$fields);
       $this->_ee->db->join('channel_titles',
         'exp_members.member_id = exp_channel_titles.author_id', 'inner');
@@ -320,11 +360,9 @@ class Mailchimp_model extends CI_Model {
       $this->_ee->db->join('exp_channel_data',
         'exp_channel_titles.entry_id = exp_channel_data.entry_id', 'inner');
 
-      $this->_ee->db->where('exp_channel_titles.channel_id',
-        $this->_zoo_visitor_settings['member_channel_id']);
+      $this->_ee->db->where('exp_channel_titles.channel_id', $channel_id);
 
       $db_members = $this->_ee->db->get('members')->result_array();
-
       foreach ($db_members as $key => $member)
       {
         // Get Member categories
@@ -332,7 +370,7 @@ class Mailchimp_model extends CI_Model {
                               ->from('exp_channels')
                               ->join('exp_categories', 'exp_channels.cat_group = exp_categories.group_id')
                               ->join('exp_category_posts', 'exp_categories.cat_id = exp_category_posts.cat_id')
-                              ->where('exp_channels.channel_id', $this->_zoo_visitor_settings['member_channel_id'])
+                              ->where('exp_channels.channel_id', $channel_id)
                               ->where('exp_category_posts.entry_id', $member['entry_id'])
                               ->get();
 
@@ -775,9 +813,7 @@ class Mailchimp_model extends CI_Model {
     {
       throw new MCS_Api_exception('Unknown API method "' .$method .'".');
     }
-
     $result = call_user_func_array(array($this->_connector, $method), $params);
-
     // Was the connector method called successfully?
     if ($result === FALSE)
     {
@@ -791,7 +827,6 @@ class Mailchimp_model extends CI_Model {
       throw new MCS_Api_exception($this->_connector->errorMessage,
         $this->_connector->errorCode);
     }
-
     return $result;
   }
 
@@ -918,6 +953,7 @@ class Mailchimp_model extends CI_Model {
     $this->_ee->load->model('channel_model');
     $this->_ee->load->model('category_model');
 
+
     if ( ! $this->_ee->addons_model->module_installed('Zoo_visitor'))
     {
       return FALSE;
@@ -953,12 +989,12 @@ class Mailchimp_model extends CI_Model {
       $field_group = $row->field_group;
       $cat_group   = $row->cat_group;
 
-      $zoo_fields = $this->_ee->channel_model->get_channel_fields(
+      $member_channel_fields = $this->_ee->channel_model->get_member_channel_fields(
         $field_group);
 
-      if ($zoo_fields->num_rows() > 0)
+      if ($member_channel_fields->num_rows() > 0)
       {
-        $this->_zoo_visitor_member_fields = $zoo_fields->result();
+        $this->_zoo_visitor_member_fields = $member_channel_fields->result();
       }
 
       // Get the categories, if any
@@ -984,6 +1020,89 @@ class Mailchimp_model extends CI_Model {
 
     return FALSE;
   }
+
+
+  /**
+   * Check if Safecracker Registration is installed.
+   *
+   * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @author  Stephen Lewis
+   * @since   2.1.0
+   * @access  private
+   * @return  void
+   */
+  private function _init_sc_registration()
+  {
+    $this->_ee->load->model('addons_model');
+    $this->_ee->load->model('channel_model');
+    $this->_ee->load->model('category_model');
+
+    if ( ! $this->_ee->addons_model->module_installed('Safecracker_registration'))
+    {
+      return FALSE;
+    }
+    // We can't know in which channel it saves the member data,
+    // but, WE NEED IT, damned! So, let's get it from the config.
+    if ( $this->_ee->config->item('safecracker_registration_channel_name') )
+    {
+      $member_channel = $this->_ee->db->select('channel_id')->from('channels')
+                                      ->where('channel_name', $this->_ee->config->item('safecracker_registration_channel_name'))
+                                      ->get();
+      if ($member_channel->num_rows() > 0)
+      {
+        $row = $member_channel->row();
+        $this->_sc_registration_settings['member_channel_id'] = $row->channel_id;
+      } else
+      {
+        $this->log_error('Could not find the channel named: ' . $this->_ee->config->item('safecracker_registration_channel_name') );
+        return FALSE;
+      }
+    }
+    else
+    {
+      $this->log_error('Safecracker Registration is installed but no channel is specified in the config. Please add $config[\'safecracker_registration_channel_name\'] in your config.php.');
+      return FALSE;
+    }
+    $sc_registration_channel = $this->_ee->channel_model->get_channel_info($this->_sc_registration_settings['member_channel_id']);
+
+    if ($sc_registration_channel->num_rows() > 0)
+    {
+      $row         = $sc_registration_channel->row();
+      $field_group = $row->field_group;
+      $cat_group   = $row->cat_group;
+
+      $sc_registration_fields = $this->_ee->channel_model->get_channel_fields($field_group);
+
+      if ($sc_registration_fields->num_rows() > 0)
+      {
+        $this->_sc_registration_member_fields = $sc_registration_fields->result();
+      }
+
+      // Get the categories, if any
+      $category_groups = $this->_ee->category_model->get_category_groups(explode('|', $cat_group));
+      if ($category_groups->num_rows() > 0) {
+
+        $members_cats = array();
+        foreach($category_groups->result() as $catgroup) {
+          $categories = $this->_ee->category_model->get_channel_categories($catgroup->group_id);
+          $members_cats[] = array(
+              'id'  => $catgroup->group_id,
+              'name'  => $catgroup->group_name,
+              'categories' => $categories->result_array()
+            );
+          // Get categories
+          $this->_sc_registration_member_categories = $members_cats;
+        }
+      }
+
+      return TRUE;
+
+    }
+
+    return FALSE;
+  }
+
+
 
 
   /**
@@ -1028,16 +1147,27 @@ class Mailchimp_model extends CI_Model {
       )
     );
 
-    // Check if Zoo Visitor is installed and initialized.
-    if ($this->_zoo_visitor_installed === TRUE)
+    // Check if Zoo Visitor OR Safecracker Registration is installed and initialized.
+    if ($this->_zoo_visitor_installed === TRUE OR $this->_sc_registration_installed === TRUE)
     {
-      foreach($this->_zoo_visitor_member_fields as $zoo_field)
+      // If both are installed, force to use Zoo Visitor (Why? Because it's Belgian!)
+      if ($this->_zoo_visitor_installed === TRUE)
+      {
+        $member_channel_fields     = $this->_zoo_visitor_member_fields;
+        $member_channel_categories = $this->_zoo_visitor_member_categories;
+      } else {
+        $member_channel_fields     = $this->_sc_registration_member_fields;
+        $member_channel_categories = $this->_sc_registration_member_categories;
+      }
+
+      // Loop on every custom fields
+      foreach($member_channel_fields as $channel_field)
       {
 
-        if ($zoo_field->field_type == 'select')
+        if ($channel_field->field_type == 'select')
         {
           $options = array();
-          $raw_options = explode("\n", $zoo_field->field_list_items);
+          $raw_options = explode("\n", $channel_field->field_list_items);
 
           foreach ($raw_options AS $key => $value)
           {
@@ -1050,21 +1180,21 @@ class Mailchimp_model extends CI_Model {
         }
 
         // Skip zoo_visitor field, which is not used.
-        if ($zoo_field->field_type !== 'zoo_visitor')
+        if ($channel_field->field_type !== 'zoo_visitor')
         {
-          $member_fields['field_id_'.$zoo_field->field_id] = array(
-            'id'      => 'field_id_'.$zoo_field->field_id,
-            'label'   => $zoo_field->field_label,
+          $member_fields['field_id_'.$channel_field->field_id] = array(
+            'id'      => 'field_id_'.$channel_field->field_id,
+            'label'   => $channel_field->field_label,
             'options' => $options,
-            'type'    => $zoo_field->field_type == 'select'
+            'type'    => $channel_field->field_type == 'select'
               ? 'select' : 'text'
           );
 
         }
       }
 
-      if (isset($this->_zoo_visitor_member_categories ) && count($this->_zoo_visitor_member_categories ) > 0) {
-        foreach($this->_zoo_visitor_member_categories as $member_category)
+      if (isset($member_channel_categories ) && count($member_channel_categories ) > 0) {
+        foreach($member_channel_categories as $member_category)
         {
 
             $options = array();
@@ -1081,11 +1211,10 @@ class Mailchimp_model extends CI_Model {
             );
         }
       }
-
     }
     else
     {
-      // If Zoo Visitor is not installed, we use the normal way...
+      // If Zoo Visitor or Safecracker Registration are not installed, we use the normal way...
       $db_member_fields = $this->_ee->db
         ->select('m_field_id, m_field_label, m_field_type, m_field_list_items')
         ->get('member_fields');
@@ -1218,12 +1347,10 @@ class Mailchimp_model extends CI_Model {
 
     // Convenience.
     $member = $members[0];
-
     // Is the member banned?
     if (in_array($member['group_id'], array('2', '4')))
     {
-      throw new MCS_Data_exception('Unable to update subscriptions for banned
-        member ' .$member['screen_name'] .' (' .$member_id .')');
+      return;
     }
 
     /**
@@ -1276,7 +1403,6 @@ class Mailchimp_model extends CI_Model {
     {
       // Merge variables.
       $merge_vars = array();
-
       foreach ($list->merge_variables AS $tag => $val)
       {
         if ($val->tag && isset($member[$val->member_field_id]))
@@ -1284,7 +1410,6 @@ class Mailchimp_model extends CI_Model {
           $merge_vars[$val->tag] = $member[$val->member_field_id];
         }
       }
-
       // Interest groups.
       $groupings = array();
 

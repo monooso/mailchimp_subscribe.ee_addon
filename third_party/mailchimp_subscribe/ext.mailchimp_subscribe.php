@@ -364,7 +364,7 @@ class Mailchimp_subscribe_ext {
 
 
   /**
-   * Handles Safecracker Registration module's safecracker_registration_edit_member hook.
+   * Handles the Safecracker Registration module's safecracker_registration_edit_member hook.
    *
    * @author  Pierre-Vincent Lexoux <addons@pvledoux.be>
    * @author  Stephen Lewis
