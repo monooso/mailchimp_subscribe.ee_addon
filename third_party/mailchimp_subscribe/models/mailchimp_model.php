@@ -1053,23 +1053,25 @@ class Mailchimp_model extends CI_Model {
         }
       }
 
-      foreach($this->_zoo_visitor_member_categories as $member_category)
-      {
-
-          $options = array();
-          foreach ($member_category['categories'] as $key => $value)
+      if (isset($this->_zoo_visitor_member_categories)) {
+          foreach($this->_zoo_visitor_member_categories as $member_category)
           {
-            $options[$value['cat_name']] = $value['cat_name'];
+
+              $options = array();
+              foreach ($member_category['categories'] as $key => $value)
+              {
+                $options[$value['cat_name']] = $value['cat_name'];
+              }
+
+              $member_fields['cat_group_id_'.$member_category['id']] = array(
+                'id'    => 'cat_group_id_'.$member_category['id'],
+                'label'   => $member_category['name'],
+                'options' => $options,
+                'type'    => 'select'
+              );
           }
 
-          $member_fields['cat_group_id_'.$member_category['id']] = array(
-            'id'    => 'cat_group_id_'.$member_category['id'],
-            'label'   => $member_category['name'],
-            'options' => $options,
-            'type'    => 'select'
-          );
-      }
-
+        }
     }
     else
     {
