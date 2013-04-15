@@ -1211,6 +1211,7 @@ class Mailchimp_model extends CI_Model {
             );
         }
       }
+
     }
     else
     {
