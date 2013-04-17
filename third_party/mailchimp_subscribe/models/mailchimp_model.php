@@ -97,6 +97,16 @@ class Mailchimp_model extends CI_Model {
    */
   private $_sc_registration_settings = array();
 
+  /**
+   * Safecracker Registration categories
+   *
+   * @author  Pierre-Vincent Ledoux <addons@pvledoux.be>
+   * @since   2.1.0
+   * @access  private
+   * @var     array
+   */
+  private $_sc_registration_member_categories = array();
+
   /* --------------------------------------------------------------
    * PUBLIC METHODS
    * ------------------------------------------------------------ */
@@ -989,7 +999,7 @@ class Mailchimp_model extends CI_Model {
       $field_group = $row->field_group;
       $cat_group   = $row->cat_group;
 
-      $member_channel_fields = $this->_ee->channel_model->get_member_channel_fields(
+      $member_channel_fields = $this->_ee->channel_model->get_channel_fields(
         $field_group);
 
       if ($member_channel_fields->num_rows() > 0)
