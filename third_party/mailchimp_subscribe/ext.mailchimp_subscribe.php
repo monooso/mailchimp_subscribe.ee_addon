@@ -346,6 +346,40 @@ class Mailchimp_subscribe_ext {
   }
 
 
+  /**
+   * Handles the Safecracker Registration module's safecracker_registration_register_member hook.
+   *
+   * @author  Pierre-Vincent Lexoux <addons@pvledoux.be>
+   * @author  Stephen Lewis
+   * @since   2.1.0
+   * @access  public
+   * @param   array     $member_data    An array of member data.
+   * @param   int       $member_id      The member ID.
+   */
+  public function safecracker_registration_register_member(Array $member_data, $member_id)
+  {
+    $this->_ee->mailchimp_model->subscribe_member($member_id);
+    return $member_data;
+  }
+
+
+  /**
+   * Handles the Safecracker Registration module's safecracker_registration_edit_member hook.
+   *
+   * @author  Pierre-Vincent Lexoux <addons@pvledoux.be>
+   * @author  Stephen Lewis
+   * @since   2.1.0
+   * @access  public
+   * @param   array     $member_data    An array of member data.
+   * @param   int       $member_id      The member ID.
+   */
+  public function safecracker_registration_edit_member(Array $member_data, $member_id)
+  {
+    $this->_ee->mailchimp_model->update_member_subscriptions($member_id);
+    return $member_data;
+  }
+
+
 
   /* --------------------------------------------------------------
    * PRIVATE METHODS
